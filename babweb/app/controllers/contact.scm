@@ -1,7 +1,7 @@
 ;; Controller welcome definition of babweb
 ;; Please add your license header here.
 ;; This file is generated automatically by GNU Artanis.
-(define-module (app controllers emacs)
+(define-module (app controllers contact)
   #:use-module (artanis mvc controller)
   #:use-module (artanis utils)
   #:use-module (artanis artanis)
@@ -13,17 +13,17 @@
   #:use-module (ice-9 pretty-print)
   )
   
-(define-artanis-controller emacs) ; DO NOT REMOVE THIS LINE!!!
+(define-artanis-controller contact) ; DO NOT REMOVE THIS LINE!!!
 
 
-(get "/emacs"
+(get "/contact"
 ;;      #:cookies '(names prjid sid )
 ;;      #:from-post 'qstr
   (lambda (rc)
     (let* (
 	   
 	 )
-	  (view-render "emacs" (the-environment)))
+	  (view-render "contact" (the-environment)))
   ))
 
 

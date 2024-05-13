@@ -81,38 +81,36 @@ ga('send', 'pageview');
 ")(display "
 <div class=\"container\" id=\"main-content\">
 
-    <H2>Process</H2>
-
-    <h3> What we provide</h3>
-    <ul>
-	<li><h3> Hosted at Build-A-Bot</h3>
-	    <ul>
-		<li>We will set up and run your bot for you, tweeting at a frequencey you specifiy within Twitter's limits. All you need is a regular Twitter account. Please read our <a href=\"./faqs\">FAQS</a> page.
-	    </ul>
-	    <li><h3> Self hosted</h3>
-		<ul>
-		    <li>We will provide you with the software you need to host your own bot. We will configure your tweets to work with our bot and help you set up your server. You will need a <a href=\"./token\">Twitter Developer's Account</a>
-		</ul>
-    </ul>  
-    <h3> What we need from you</h3>
-    <ul>
-	<li>Your tweets, <a href=\"./tweets\">properly formatted</a>.
-	    <li>Related images (if desired)
-		<li>For self hosting only: client id and password from Developer's account.
-    </ul>
+    <H3>Tweet preparation</H3>
     
-    <p>Please read our <a href=\"./faqs\">FAQS</a> page</p>
+    Formatting your tweets for Build-A-Bot is easy and can be done with a simple text editor like Notepad. Tweets are collected in a single plain text file. After composing your tweet hit return, provide an image indicator, hit return and repeat for the next tweet. Here is an example of a text file properly formated for the Build-A-Bot tweet processor:
+    <br><br>
+    <img src=\"text.png\"/>
+    <img src=\"text2.png\"/>
+    <br><br>
 
-    <p><a href=\"./register\">Register here</a></p>
+    <h4> Image indicators</h4>
+
+    There are three options when specifying an image:
+    <table class=\"table\">                                                                  
+	<thead><tr><th>Specifier</th><th>Description</th></tr></thead>
+	<tbody>
+	    <tr><td>none</td><td>No image will be provided</td></tr>
+	    <tr><td>random</td><td>a random image will be selected from a pool of images</td></tr>
+	    <tr><td>myimage.jpeg</td><td>a specific image is provided and will be attached to the tweet or to the first tweet of a thread.<br> Build-A-Bot recognizes images with the extensions .jpg, .jpeg, or .png</td></tr>
+	</tbody>
+    </table>
+    <br><br>
+
+    <h4><a href=\"./images\">Image preparation</a></h4><br><br>
+
+    <h4>Tweet Corpus</h4>
+
+    If you are pulling tweets from a corpus e.g. the <a href=\"https://twitter.com/eddiebbot\">@eddiebbot</a> bot tweets text from <i>Propaganda</i> by Edward Bernays, check out the <a href=\"./emacs\">emacs</a> page for a code snippet that can streamline the process - presuming you are comfortable with <a href=\"https://www.gnu.org/software/emacs/\">EMACS</a> that is!
 
 
+</div>                                                            
 
-
-
-
-
-
-</div>                                                              
 
 
 ")(display "<hr>
