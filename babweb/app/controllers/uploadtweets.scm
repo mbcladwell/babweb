@@ -20,12 +20,12 @@
 
 
 (get "/uploadtweets"
-   
-      #:cookies '(names sid )
+   #:session #t
+      #:cookies '(names sid custid)
 ;;      #:from-post 'qstr
   (lambda (rc)
     (let* (
-	   
+	   (_  (:cookies-set! rc 'custid "custid" "4567"))
 	 )
 	  (view-render "uploadtweets" (the-environment)))
   ))

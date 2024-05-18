@@ -19,36 +19,22 @@
 
 (get "/test"
      #:session 'spawn
-      #:cookies '(names prjid sid )
+      #:cookies '(names custid sid )
 ;;      #:from-post 'qstr
   (lambda (rc)
-    (let* ((myvar "this is myvar")
+    (let* ((myvar (:cookies-value rc "custid"))
 	   (sid (:session rc 'spawn))
 	   (myvar1 sid)
-	   (_ (session-set! sid "b" myvar1))
+;;	   (_ (session-set! sid "b" myvar1))
 	   
 ;;	   (_ (:cookies-set! rc 'prjid "anewcokka" "dumdum"))
-	   (_ (:cookies-remove! rc "anewcokka"))
+;;	   (_ (:cookies-remove! rc "anewcokka"))
 	   (theenv (the-environment))
 	   
 	 )
 	  (view-render "test" (the-environment)))
     ))
 
-(post "/getcontent"
-     #:session 'spawn
-      #:cookies '(names prjid sid )
-      #:from-post 'qstr
-  (lambda (rc)
-    (let* ((myvar "this is myvar")
-	   (theenv (the-environment))
-	   
-	 )
-	  (view-render "test" (the-environment)))
-    ))
-
-
-      
 
 
 
