@@ -83,7 +83,7 @@ ga('send', 'pageview');
 
 Customer id: ")(display  custid )(display "<br>
 File-names:  ")(display  blah )(display "<br>
-")(display  raw-quotes-file )(display "<br>
+")(display  validation-text )(display "<br>
 
 
 ")(display "<hr>

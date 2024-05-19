@@ -12,6 +12,7 @@
   #:use-module (srfi srfi-1)
   #:use-module (web uri)	     
   #:use-module (ice-9 pretty-print)
+  #:use-module (ice-9 format)
   #:use-module (json)
   #:use-module (ice-9 regex) ;;list-matches
   #:use-module (ice-9 string-fun)  ;;string-replace-substring	   
@@ -25,20 +26,21 @@
 
 
 (post "/getcontent"
-      #:cookies '(names sid cust-id)
+      #:cookies '(names sid custid)
     ;;  #:from-post 'qstr
       #:from-post `(store #:path "babdata" #:sync #t #:simple-ret? #f ) 
  (lambda (rc)
    (let* (;;(file1 "notmod")
 	  (custid (:cookies-value rc "custid" ))
+	  ;;(custid "6789")
 	  ;;	  (file-dest (string-append "cust" custid))
 	  (blah (:from-post rc 'store))
 	  (file-names (extract-file-names blah))
-	  (raw-quotes-file (car file-names))
-;;	  (randoms (cadr file-names))
-;;	  (specifics (caddr file-names))
-
-;;	  (_ (process-downloaded-files custid file-names))
+	  ;; (raw-quotes-file (car file-names))
+	  ;; (randoms (cadr file-names))
+	  ;; (specifics (caddr file-names))
+	  (validation-text (get-validation-text file-names))
+	  (_ (process-downloaded-files custid file-names))
 	  ;;(sid (:cookie-ref rc "sid"))
 	 )
      (view-render "getcontent" (the-environment))
@@ -120,12 +122,31 @@
   ))
 
 
+(define (check-a-file f descriptor)
+  ;;f the file
+  ;;descriptor tweets randoms specifics
+  (if (equal? f "null")
+      (format #f "<p>File not provided for ~a.</p>" descriptor)
+      (format #f "<p>File ~a provided for ~a.</p>" f descriptor)))
+
+(define (get-validation-text file-names)
+(let* (
+  	 (raw-quotes-file (car file-names))
+	 (randoms (cadr file-names))
+	 (specifics (caddr file-names))
+	 )
+  (string-append (check-a-file raw-quotes-file "tweets")
+				   (check-a-file randoms "randoms")
+				   (check-a-file specifics "specifics"))))
+
 (define (get-file-name s)
   ;;expecting <p>Upload succeeded! 11391: kingdomcome.zip bytes!</p>
   (let* ((b (string-contains s "bytes!</p>"))
 	 (c (substring s 0 (- b 1)))
 	 (d (string-index c #\:)))
-(substring c (+ d 2) (string-length c))))
+    (if (= d 22) "null" (substring c (+ d 2) (string-length c)))))
+
+
 
 (define (extract-file-names a)
   (let* ((s (string-match "</p>" a ))
@@ -143,8 +164,11 @@
 (define (unzip in out)
   ;;in is the file
   ;;out is destination folder
-(system (string-append "unzip " in " -d " out))
-  )
+  (system (string-append "unzip " in " -d " out)))
+
+
+(define process-files-success-message "File Processing completed successfully!")
+(define process-files-error-message "Tweets file error - file processing aborted")
 
 (define (process-downloaded-files custid files)
   ;;files is a list '(file1 file2 file3)
@@ -156,25 +180,34 @@
 	 (raw-quotes-file (car files))
 	 (randoms (cadr files))
 	 (specifics (caddr files))
-	 ;; (_ (rename-file-at "babdata" raw-quotes-file working-dir raw-quotes-file))
-	 ;; (_ (rename-file-at "babdata" randoms working-dir randoms))
-	 ;; (_ (rename-file-at "babdata" specifics working-dir specifics))
-	  (_ (rename-file (string-append "./babdata/" raw-quotes-file) (string-append working-dir "/" raw-quotes-file)))
-	  (_ (rename-file (string-append "./babdata/" randoms) (string-append working-dir "/" randoms)))
-	  (_ (rename-file (string-append "./babdata/" specifics) (string-append working-dir "/" specifics)))
 	 
-	  (all-new-quotes (get-all-new-quotes (string-append working-dir "/" raw-quotes-file)))
-
-
-	  (_ (unzip (string-append working-dir "/" randoms) (string-append working-dir "/random" )))
+	 (process-message (if (equal? raw-quotes-file "null")
+			      process-files-error-message
+			      (let* ((new-quotes-file (string-append working-dir "/" raw-quotes-file))
+				     (_ (rename-file (string-append "./babdata/" raw-quotes-file) new-quotes-file))
+				     (all-new-quotes (get-all-new-quotes  new-quotes-file))
+				     )
+				(begin
+				  (save-quotes-as-json working-dir (list->vector (process-quotes all-new-quotes '() 0 )))
+				  (make-last-posted-json working-dir)
+				  (delete-file new-quotes-file)
+				  (if (equal? randoms "null") #f
+				      (begin
+					(rename-file (string-append "./babdata/" randoms) (string-append working-dir "/" randoms))
+					(unzip (string-append working-dir "/" randoms) (string-append working-dir "/random" ))
+					(delete-file (string-append working-dir "/" randoms))))
+				  (if (equal? specifics "null") #f
+				      (begin
+					(rename-file (string-append "./babdata/" specifics) (string-append working-dir "/" specifics))
+					(unzip (string-append working-dir "/" specifics) (string-append working-dir "/specific" ))
+					(delete-file (string-append working-dir "/" specifics)))))
+			      
+				process-files-success-message
+				)))
+   
 	 ;; ;;used when appending
 	 ;; ;;(last-id (get-last-id))
 	 ;; ;;(start (if (= last-id 0) 0 (+ last-id 1)))  ;;record to start populating
-	  (start 0)
-	  (new-list (process-quotes all-new-quotes '() start ))
-	  (_ (save-quotes-as-json working-dir (list->vector new-list)))
-	  (_ (make-last-posted-json working-dir))
 	 )
     #f
-
   ))

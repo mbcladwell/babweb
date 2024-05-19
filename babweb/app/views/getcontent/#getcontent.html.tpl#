@@ -9,5 +9,6 @@ Customer id: <%= custid %><br>
 File-names:  <%= blah %><br>
 <%= validation-text %><br>
 
+<%= process-message %>
 
 <@include footer.tpl %>
