@@ -17,7 +17,7 @@
 
 
 (get "/pricing"
-;;      #:cookies '(names prjid sid )
+      #:cookies '(names sid )
 ;;      #:from-post 'qstr
   (lambda (rc)
     (let* (

@@ -1,34 +1,46 @@
 ;; Controller welcome definition of babweb
 ;; Please add your license header here.
 ;; This file is generated automatically by GNU Artanis.
-(define-module (app controllers getcontent)
+(define-module (app controllers upload)
   #:use-module (artanis mvc controller)
   #:use-module (artanis utils)
   #:use-module (artanis artanis)
   #:use-module (artanis cookie)
   #:use-module (artanis session)
+  #:use-module (artanis upload)
+  
   #:use-module ((rnrs) #:select (define-record-type))
   #:use-module (artanis irregex)
   #:use-module (srfi srfi-1)
   #:use-module (web uri)	     
   #:use-module (ice-9 pretty-print)
-  #:use-module (ice-9 format)
   #:use-module (json)
-  #:use-module (ice-9 regex) ;;list-matches
-  #:use-module (ice-9 string-fun)  ;;string-replace-substring	   
-	   
   #:use-module (ice-9 textual-ports) ;;get-string-all
+  #:use-module (ice-9 format)
+  #:use-module (ice-9 regex) ;;list-matches
+;;  #:use-module (oop goops) ;;class-of
+  #:use-module (ice-9 string-fun)  ;;string-replace-substring	   
+
   )
   
-(define-artanis-controller getcontent) ; DO NOT REMOVE THIS LINE!!!
+(define-artanis-controller upload) ; DO NOT REMOVE THIS LINE!!!
 
 
+(get "/upload/tweets"
+     #:session #t
+     #:cookies '(names sid custid)
+  (lambda (rc)
+    (let* (
+	   (_  (:cookies-set! rc 'custid "custid" "1234"))
+	   (_ (DEBUG  (string-append "Value of cwd: " (cwd) )))
+	 )
+	  (view-render "tweets" (the-environment)))
+  ))
 
-
-(post "/getcontent"
+(post "/upload/getcontent"
       #:cookies '(names sid custid)
     ;;  #:from-post 'qstr
-      #:from-post `(store #:path "babdata" #:sync #t #:simple-ret? #f ) 
+      #:from-post `(store #:path (current-upload-path) #:sync #t #:simple-ret? #f ) 
  (lambda (rc)
    (let* (;;(file1 "notmod")
 	  (custid (:cookies-value rc "custid" ))
@@ -36,11 +48,13 @@
 	  ;;	  (file-dest (string-append "cust" custid))
 	  (blah (:from-post rc 'store))
 	  (file-names (extract-file-names blah))
-	  ;; (raw-quotes-file (car file-names))
-	  ;; (randoms (cadr file-names))
-	  ;; (specifics (caddr file-names))
+	  (raw-quotes-file (car file-names))
+	  (randoms (cadr file-names))
+	  (specifics (caddr file-names))
 	  (validation-text (get-validation-text file-names))
-	  (_ (process-downloaded-files custid file-names))
+	  (current-up-path (current-upload-path))
+	  (process-message (process-downloaded-files custid file-names))
+	  ;;(process-message "blah")
 	  ;;(sid (:cookie-ref rc "sid"))
 	 )
      (view-render "getcontent" (the-environment))
@@ -140,12 +154,10 @@
 				   (check-a-file specifics "specifics"))))
 
 (define (get-file-name s)
-  ;;expecting <p>Upload succeeded! 11391: kingdomcome.zip bytes!</p>
-  (let* ((b (string-contains s "bytes!</p>"))
-	 (c (substring s 0 (- b 1)))
-	 (d (string-index c #\:)))
-    (if (= d 22) "null" (substring c (+ d 2) (string-length c)))))
-
+  ;;expecting <p>Upload succeeded! kingdomcome.zip: 72834 bytes!</p>
+  (let* ((a (string-index s #\:))
+	 (b (string-contains s "succeeded! ")))
+    (if (= a 21) "null" (substring s (+ b 11) a))))
 
 
 (define (extract-file-names a)
@@ -172,8 +184,8 @@
 
 (define (process-downloaded-files custid files)
   ;;files is a list '(file1 file2 file3)
-  (let* (
-	 (working-dir (string-append "./babdata/cust" custid))
+  (let* ((cup  (string-replace-substring (current-upload-path) "\"" ""))
+	 (working-dir  (string-append cup "/"  custid))
 	 (_ (mkdir working-dir))
 	 (random-dir (mkdir (string-append working-dir "/random")))
 	 (specific-dir (mkdir (string-append working-dir"/specific")))
@@ -209,5 +221,5 @@
 	 ;; ;;(last-id (get-last-id))
 	 ;; ;;(start (if (= last-id 0) 0 (+ last-id 1)))  ;;record to start populating
 	 )
-    #f
+    process-message
   ))

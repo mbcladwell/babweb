@@ -19,16 +19,16 @@
 
 (get "/test"
      #:session 'spawn
-      #:cookies '(names custid sid prjid)
+      #:cookies '(names custid sid )
 ;;      #:from-post 'qstr
   (lambda (rc)
-    (let* (;;(sid (:session rc 'spawn))
-	   ;;(myvar1 sid)
+    (let* ((sid (:session rc 'spawn))
+	   (myvar1 sid)
 ;;	   (_ (session-set! sid "b" myvar1))
 	   
 	   (_ (:cookies-update! rc ))
 ;;	   (_ (:cookies-remove! rc "custid"))
-;;	   (myvar (:cookies-value rc "custid"))
+	   (myvar (:cookies-value rc "custid"))
 	   (theenv (the-environment))
 	   
 	 )

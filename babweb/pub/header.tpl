@@ -40,7 +40,7 @@ ga('send', 'pageview');
  
 	
 </div>
-    <center><img src="./img/banner.png" style="width:100%;"/></center>
+    <center><img src="../img/banner.png" style="width:100%;"/></center>
 
     <nav class="navbar navbar-expand-lg navbar-light bg-light">
 

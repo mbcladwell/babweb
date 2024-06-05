@@ -17,7 +17,7 @@
 
 
 (get "/process"
-;;      #:cookies '(names prjid sid )
+      #:cookies '(names custid sid )
 ;;      #:from-post 'qstr
   (lambda (rc)
     (let* (

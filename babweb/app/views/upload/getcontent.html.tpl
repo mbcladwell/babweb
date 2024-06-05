@@ -6,8 +6,15 @@
 
 
 Customer id: <%= custid %><br>
-File-names:  <%= blah %><br>
+
+File-names:  <%= file-names %><br>
+
+<%= process-message %>
 <%= validation-text %><br>
+
+
+<%= current-up-path %>
+
 
 
 <@include footer.tpl %>

@@ -9,7 +9,7 @@
     <br>Review the <a href="./tweets"> required format</a> for tweets.
     <br><br>
 
-    <form action="./getcontent" method="post" enctype="multipart/form-data">
+    <form action="/upload/getcontent" method="post" enctype="multipart/form-data">
 	<table>
 	    <tr class="spaceUnder"><td align="right">Select formatted tweets<br> file (1MB limit):</td><td><input class="form-control" type="file" name="file1" id="file1"></td><td>required</td></tr>
 	    <tr></tr>

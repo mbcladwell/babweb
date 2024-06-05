@@ -17,7 +17,7 @@
 
 
 (get "/images"
-;;      #:cookies '(names prjid sid )
+      #:cookies '(names prjid sid )
 ;;      #:from-post 'qstr
   (lambda (rc)
     (let* (
