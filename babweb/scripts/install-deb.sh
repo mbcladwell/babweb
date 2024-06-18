@@ -97,7 +97,7 @@ updatesys()
 {
     sudo DEBIAN_FRONTEND=noninteractive apt-get --assume-yes update
     sudo DEBIAN_FRONTEND=noninteractive apt-get --assume-yes upgrade
-    sudo DEBIAN_FRONTEND=noninteractive apt-get  --assume-yes install gnupg git nscd nano guix
+    sudo DEBIAN_FRONTEND=noninteractive apt-get  --assume-yes install gnupg git nscd nano guix curl
     
 }
 
@@ -107,11 +107,11 @@ guixinstall()
 
     guix pull
     hash guix
-    guix install glibc-utf8-locales
+    guix install glibc-locales
     export GUIX_PROFILE= ./.guix-profile
     GUIX_PROFILE= ./.guix-profile
     . $GUIX_PROFILE/etc/profile
-    sudo guix install glibc-utf8-locales
+    sudo guix install glibc-locales
     export GUIX_LOCPATH= ./.guix-profile/lib/locale
     GUIX_LOCPATH= ./.guix-profile/lib/locale
     ##guix package -u
@@ -119,7 +119,7 @@ guixinstall()
     . $GUIX_PROFILE/.config/guix/current/etc/profile           
     . $GUIX_PROFILE/etc/profile
       
-      
+	guix install ebbot guile-oauth      
 }
 
 
