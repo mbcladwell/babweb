@@ -6,6 +6,9 @@
 # We require Bash but for portability we'd rather not use /bin/bash or
 # /usr/bin/env in the shebang, hence this hack.
 
+## need ~/.ssh/id_rsa to be transferred so that I can git clone
+##scp -i labsolns.pem /home/mbc/.ssh/id_rsa   admin@ec2-18-220-97-85.us-east-2.compute.amazonaws.com:./.ssh
+
 if [ "x$BASH_VERSION" = "x" ]
 then
     exec bash "$0" "$@"
@@ -97,7 +100,8 @@ updatesys()
 {
     sudo DEBIAN_FRONTEND=noninteractive apt-get --assume-yes update
     sudo DEBIAN_FRONTEND=noninteractive apt-get --assume-yes upgrade
-    sudo DEBIAN_FRONTEND=noninteractive apt-get  --assume-yes install gnupg git nscd nano guix curl
+    sudo DEBIAN_FRONTEND=noninteractive apt-get  --assume-yes install gnupg nscd nano git curl wget cron
+    sudo DEBIAN_FRONTEND=noninteractive apt-get  --assume-yes install guix
     
 }
 
@@ -105,21 +109,20 @@ updatesys()
 guixinstall()
 {
 
-    guix pull
-    hash guix
     guix install glibc-locales
-    export GUIX_PROFILE= ./.guix-profile
-    GUIX_PROFILE= ./.guix-profile
-    . $GUIX_PROFILE/etc/profile
     sudo guix install glibc-locales
-    export GUIX_LOCPATH= ./.guix-profile/lib/locale
-    GUIX_LOCPATH= ./.guix-profile/lib/locale
+    export GUIX_PROFILE= $HOME/.guix-profile
+    GUIX_PROFILE= $HOME/.guix-profile
+    . $GUIX_PROFILE/etc/profile
+    export GUIX_LOCPATH= $HOME/.guix-profile/lib/locale
+    GUIX_LOCPATH= $HOME/.guix-profile/lib/locale
+    guix pull
     ##guix package -u
     
-    . $GUIX_PROFILE/.config/guix/current/etc/profile           
+    . $HOME/.config/guix/current/etc/profile           
     . $GUIX_PROFILE/etc/profile
       
-	guix install ebbot guile-oauth      
+##	guix install ebbot guile-oauth      
 }
 
 
@@ -197,8 +200,6 @@ _msg "Making channels.scm"
         (name 'guix)
         (url \"https://git.savannah.gnu.org/git/guix.git\")
         (branch \"master\")
-        (commit
-          \"5b71034fe81c2639bb7a9121146ddc551f6067f9\")
         (introduction
           (make-channel-introduction
             \"9edb3f66fd807b096b48283debdcddccfea34bad\"
@@ -210,7 +211,7 @@ _msg "Making channels.scm"
         (branch \"master\")
         (introduction
           (make-channel-introduction
-            \"b452d06e8fec32e53d77021fab29440be7bae2e6\"
+            \"79ae9217d3f3626bdf6f7530ba6ffc6018f127ca\"
             (openpgp-fingerprint
               \"E709 94D1 9CB0 FE2B CAC4  9E54 0BF8 F292 4D2B 1944\")))))"  >> ./.config/guix/channels.scm
 
