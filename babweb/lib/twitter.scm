@@ -38,15 +38,6 @@
 	   oauth1-post-tweet-recurse	   
 	   ))
 
-
-;; (define *oauth-consumer-key* "sHbODSbXeHaV6lV3HvGVRRmfD")
-;; (define *oauth-consumer-secret* "if9ZzqTzYnD2hQbDWYqr4vU96Kbxa4J4LnU96FNybGSEXT0fmp")
-;; (define *bearer-token* "AAAAAAAAAAAAAAAAAAAAAENdbwEAAAAAK8xNPdkooUQG8UW2skHuRhgnaDo%3D6vkZYbDATcAgTBflgdz1Ng8MPT4qbTV12gh3RUjpt7YAxZj8pM")  ;;this does not change
-;; (define *oauth-access-token* "1516431938848006149-ZmM56NXft0k4rieBIH3Aj8A5727ALH")
-;; (define *oauth-token-secret* "0Dxm5RXqRUR880NpXCLVekAfU50dcAbTvso6nlzHSQALy")
-;; (define *client-id* "SU1SQUh1a2VWNU5GQjFFT2hzLWU6MTpjaQ")
-;; (define *client-secret* "ZZGJ5kPWnnkqCtqls8HJDGwyKKAi6cf6TbKnDY7XCzPQQN-pIy")
-
 (define *oauth-consumer-key* (@@ (ebbot env) *oauth-consumer-key*))
 (define *oauth-consumer-secret* (@@ (ebbot env) *oauth-consumer-secret*))
 (define *bearer-token* (@@ (ebbot env) *bearer-token*))  ;;this does not change
@@ -67,6 +58,66 @@
 
 ;#<<oauth1-response> token: "856105513800609792-ttQfcoxgrGJnwaLfjEdyagDjL9lfbTP" secret: "EfoSSaCHSnmfkhfU2r5oiU03cA6Kb6SLLAr7rxZO73Tfg" params: (("user_id" . "856105513800609792") ("screen_name" . "mbcladwell"))>
 
+
+;; Client credentials:
+
+;;     App Key === API Key === Consumer API Key === Consumer Key === Customer Key === oauth_consumer_key
+;;     App Key Secret === API Secret Key === Consumer Secret === Consumer Key === Customer Key === oauth_consumer_secret
+;;     Callback URL === oauth_callback
+     
+
+;; Temporary credentials:
+
+;;     Request Token === oauth_token
+;;     Request Token Secret === oauth_token_secret
+;;     oauth_verifier
+     
+
+;; Token credentials:
+
+;;     Access token === Token === resulting oauth_token
+;;     Access token secret === Token Secret === resulting oauth_token_secret
+
+
+(define (get-request-token k s)
+  ;; returns a response: #<<oauth1-response> token: "Ia2k4gAAAAABb11DAAABgJn1fzQ" secret: "Pi8PTBLsyuE7tsfB1X2anChF3WyP1R7e" params: ()>
+  ;; retrieve with  token: (oauth1-response-token a)
+  ;;                secret: (oauth1-response-token-secret a)
+(let*(	 (uri "https://api.twitter.com/oauth/request_token")
+	 ;;(credentials (make-oauth1-credentials oauth-access-token oauth-token-secret))
+	 (credentials (make-oauth1-credentials k s))	 
+	 (a  (oauth1-client-request-token uri credentials "oob"
+					 #:method 'POST
+					 #:params '()
+					 #:signature oauth1-signature-hmac-sha1)))	
+  a))
+
+(define (get-request-verifier oauth_tokenv oauth-verifierv)
+  ;;oauth_token is the token from get-request-token
+  ;;oauth-verifier is the pin manually copied from the ____ page
+  ;;output is a 'response object' as with get-request-token
+  (let* ( (verifier-request (make-oauth-request "https://api.twitter.com/oauth/access_token" 'POST '()))
+	  (dummy (oauth-request-add-params verifier-request `( (oauth_token . ,oauth_tokenv)
+	  						       (oauth_verifier . ,oauth-verifierv)
+							      (oauth_callback_confirmed . "true")
+							       )))
+	                                                       
+	  (out (receive (response body)
+		   (oauth1-http-request verifier-request #:body #f #:extra-headers '((oauth_callback_confirmed . "true")))
+		 (oauth1-http-body->response response body)))
+	  )    
+    out
+;; (receive (response body)
+;; 	   	   (oauth1-http-request verifier-request #:body #f #:extra-headers '((oauth_callback_confirmed . "true")))
+;; 	  	 (pretty-print (utf8->string body)))
+    ))
+
+;#<<oauth1-response> token: "856105513800609792-ttQfcoxgrGJnwaLfjEdyagDjL9lfbTP" secret: "EfoSSaCHSnmfkhfU2r5oiU03cA6Kb6SLLAr7rxZO73Tfg" params: (("user_id" . "856105513800609792") ("screen_name" . "mbcladwell"))>
+
+
+;;                              key                                 secret                            custid
+;;guile -e main -s ./get-access-token.scm 2R103u4mp3iwy8MtjRY5LJXsw Cl5Jx2XRgYvo4GmXT7uZooq8jkXUiyYxwhCOVcd6RqF4LyMP0J eddibbot
+;;#<<oauth1-response> token: "856105513800609792-afMxtRwKgu6gmq2TH9ScCAFav5kH1FA" secret: "QhqicaaTpMAe8UYTb0kUO41WwROHav3lCqo132cXZNEVG" params: (("user_id" . "856105513800609792") ("screen_name" . "mbcladwell"))>
 
 
 (define (oauth2-post-tweet  text )
@@ -156,4 +207,27 @@
        
 
 
+(define (main args)
+  ;;arg1 is consumer_key
+  ;;arg2 is consumer_secret
+  ;;arg3 is customer id
+  (let* ( (token (oauth1-response-token (get-request-token (cadr args) (caddr args))))
+	  (uri (string-append "https://api.twitter.com/oauth/authenticate?oauth_token=" token))
+	   (dummy (pretty-print uri))
+	   (dummy (activate-readline))
+	   (pin (readline "\nEnter pin: "))
+	  (oauth1-response (get-request-verifier token pin))  ;;user-id and screenname are the customer
+	  ;; (token (oauth1-response-token oauth1-response))
+	  ;; (secret (oauth1-response-token-secret oauth1-response))
+	  ;; (params (oauth1-response-params oauth1-response))
+	  ;; (a (car params))
+	  ;; (b (cadr params))
+	  ;; (lst `((token . ,token)(secret . ,secret) ,a ,b))
+	  ;; (p  (open-output-file  (string-append "./tokens/" (cadddr args) ".json")))
+	  )
+    
+;;         (scm->json lst p)
+	  
+(pretty-print oauth1-response)
+    ) )
 

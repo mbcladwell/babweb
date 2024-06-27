@@ -15,6 +15,7 @@
  #:use-module (babweb lib env)
  #:use-module (ice-9 ftw);;scandir
  #:export (get-rand-file-name
+	   add-two-lists
 	   chunk-a-tweet
 	   get-counter
 	   set-counter
@@ -22,11 +23,23 @@
 	   get-all-excerpts-alist
 	   get-all-hashtags-string
 	   get-nonce
+	   get-next-val-param
 	   get-image-file-name))
 
-(define *working-dir* (@@ (ebbot env) *working-dir*))
-(define *tweet-length* (@@ (ebbot env) *tweet-length*))
-(define *bearer-token* (@@ (ebbot env) *bearer-token*))  ;;this does not change
+
+(define (add-two-lists lst base id)
+  ;;lst: new elements to be added; monitor this for null
+  ;;base: base list i.e. the db
+  ;;id: starting id (a number)
+  (if (null? (cdr lst))
+      (let*(
+	    (a  (assoc-set! (car lst) "id" id))	   
+	    (dummy  (set! base (cons a base) )))
+	base)
+      (let*((a  (assoc-set! (car lst) "id" id))
+	    (dummy  (set! base (cons a base) ))
+	    (dummy (set! id (+ id 1))))
+	(add-two-lists (cdr lst) base id))))
 
 
 (define nonce-chars (list->vector (string->list "ABCDEFGHIJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz123456789")))
@@ -60,7 +73,23 @@
 	 (dummy (put-string p a)))
   (close-port p)))
 
+(define (my-last lst)
+  (if (null? (cdr lst))
+      (car lst)
+      (my-last (cdr lst))))
 
+(define (get-next-val-param lst param val)
+  ;;get the max value for a parameter e.g. id so
+  ;;the next id can be assigned
+  ;;assume a string in a json so convert to integer
+  ;;usage (get-max-val-param lst param 0)
+  (if (null? (cdr lst))
+      (begin
+	(set! val (max (string->number (assoc-ref (car lst) param)) val))
+	(number->string (+ val 1)))
+      (begin
+	(set! val (max (string->number (assoc-ref (car lst) param)) val))
+      (get-next-val-param (cdr lst) param val))))
 
 
 (define (get-tweet-chunks txt lst size n counter)
