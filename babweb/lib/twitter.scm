@@ -30,21 +30,22 @@
  #:use-module (oauth oauth1 signature)
  #:use-module (rnrs bytevectors)
  #:use-module (ice-9 textual-ports)
- #:use-module (ebbot image)
- #:use-module (ebbot utilities)
+ #:use-module (babweb lib image)
+ #:use-module (babweb lib utilities)
  #:export (oauth2-post-tweet
 	   oauth1-post-tweet
 	   oauth2-post-tweet-recurse
-	   oauth1-post-tweet-recurse	   
+	   oauth1-post-tweet-recurse
+	   main
 	   ))
 
-(define *oauth-consumer-key* (@@ (ebbot env) *oauth-consumer-key*))
-(define *oauth-consumer-secret* (@@ (ebbot env) *oauth-consumer-secret*))
-(define *bearer-token* (@@ (ebbot env) *bearer-token*))  ;;this does not change
-(define *oauth-access-token* (@@ (ebbot env) *oauth-access-token*))
-(define *oauth-token-secret* (@@ (ebbot env) *oauth-token-secret*))
-(define *client-id* (@@ (ebbot env) *client-id*))
-(define *client-secret* (@@ (ebbot env) *client-secret*))
+;; ;;(define *oauth-consumer-key* (@@ (babweb lib env) *oauth-consumer-key*))
+;; (define *oauth-consumer-secret* (@@ (babweb lib env) *oauth-consumer-secret*))
+;; (define *bearer-token* (@@ (babweb lib env) *bearer-token*))  ;;this does not change
+;; (define *oauth-access-token* (@@ (babweb lib env) *oauth-access-token*))
+;; (define *oauth-token-secret* (@@ (babweb lib env) *oauth-token-secret*))
+;; (define *client-id* (@@ (babweb lib env) *client-id*))
+;; (define *client-secret* (@@ (babweb lib env) *client-secret*))
 
 
   	 
@@ -211,7 +212,10 @@
   ;;arg1 is consumer_key
   ;;arg2 is consumer_secret
   ;;arg3 is customer id
-  (let* ( (token (oauth1-response-token (get-request-token (cadr args) (caddr args))))
+  (let* (
+	 ;; (token (oauth1-response-token (get-request-token (cadr args) (caddr args))))
+	 (_  (pretty-print (string-append "in twitt: " *oauth-consumer-key*)))
+	 (token (oauth1-response-token (get-request-token *oauth-consumer-key* *oauth-consumer-secret* )))
 	  (uri (string-append "https://api.twitter.com/oauth/authenticate?oauth_token=" token))
 	   (dummy (pretty-print uri))
 	   (dummy (activate-readline))

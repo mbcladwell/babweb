@@ -17,16 +17,25 @@
 #:use-module (ice-9 binary-ports)
 #:use-module (ice-9 ftw)
 #:use-module (json)
-#:use-module (oauth oauth1)
-#:use-module (oauth oauth2)
-#:use-module (oauth utils)
-#:use-module (oauth request)
+
+ #:use-module (oauth oauth1)
+ #:use-module (oauth oauth2)
+ #:use-module (oauth oauth2 request)
+ #:use-module (oauth oauth2 response)
+ #:use-module (oauth utils)
+ #:use-module (oauth request)
+ #:use-module (oauth oauth1 client)
+ #:use-module (oauth oauth1 utils)
+ #:use-module (oauth oauth1 credentials)
+ #:use-module (oauth oauth1 signature)
+
 #:use-module (rnrs bytevectors)
 #:use-module (rnrs io ports)
 #:use-module (ice-9 textual-ports)
 #:use-module (gcrypt base64)
 #:use-module (babweb lib env)
 #:use-module (babweb lib twitter)
+#:use-module (babweb lib utilities)
 ;;#:use-module (ebbot)
 
 #:export (upload-image
@@ -40,13 +49,13 @@
 ;; (define *client-id* "SU1SQUh1a2VWNU5GQjFFT2hzLWU6MTpjaQ")
 ;; (define *client-secret* "ZZGJ5kPWnnkqCtqls8HJDGwyKKAi6cf6TbKnDY7XCzPQQN-pIy")
 
-(define *oauth-consumer-key* (@@ (ebbot env) *oauth-consumer-key*))
-(define *oauth-consumer-secret* (@@ (ebbot env) *oauth-consumer-secret*))
-(define *bearer-token* (@@ (ebbot env) *bearer-token*))  ;;this does not change
-(define *oauth-access-token* (@@ (ebbot env) *oauth-access-token*))
-(define *oauth-token-secret* (@@ (ebbot env) *oauth-token-secret*))
-(define *client-id* (@@ (ebbot env) *client-id*))
-(define *client-secret* (@@ (ebbot env) *client-secret*))
+(define *oauth-consumer-key* (@@ (babweb lib env) *oauth-consumer-key*))
+(define *oauth-consumer-secret* (@@ (babweb lib env) *oauth-consumer-secret*))
+(define *bearer-token* (@@ (babweb lib env) *bearer-token*))  ;;this does not change
+(define *oauth-access-token* (@@ (babweb lib env) *oauth-access-token*))
+(define *oauth-token-secret* (@@ (babweb lib env) *oauth-token-secret*))
+(define *client-id* (@@ (babweb lib env) *client-id*))
+(define *client-secret* (@@ (babweb lib env) *client-secret*))
 
 
 (define (oauth1-upload-media-finalize media-id )
@@ -73,44 +82,44 @@
 ;tweet-request
     ))
 
-(define (oauth1-upload-media-simple  file image-type)
-  ;;Requires authentication? 	Yes (user context only)
-  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/authorizing-a-request
-  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/creating-a-signature
-  (let* (
-	 (oauth1-response (make-oauth1-response *oauth-access-token* *oauth-token-secret* '(("user_id" . "1516431938848006149") ("screen_name" . "eddiebbot")))) ;;these credentials do not change
-	 (credentials (make-oauth1-credentials *oauth-consumer-key* *oauth-consumer-secret*))
- 	 (uri  "https://upload.twitter.com/1.1/media/upload.json")
-	 (p (open-input-file file))
-	; (bytes (get-bytevector-all p))	 
+;; (define (oauth1-upload-media-simple  file image-type)
+;;   ;;Requires authentication? 	Yes (user context only)
+;;   ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/authorizing-a-request
+;;   ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/creating-a-signature
+;;   (let* (
+;; 	 (oauth1-response (make-oauth1-response *oauth-access-token* *oauth-token-secret* '(("user_id" . "1516431938848006149") ("screen_name" . "eddiebbot")))) ;;these credentials do not change
+;; 	 (credentials (make-oauth1-credentials *oauth-consumer-key* *oauth-consumer-secret*))
+;;  	 (uri  "https://upload.twitter.com/1.1/media/upload.json")
+;; 	 (p (open-input-file file))
+;; 	; (bytes (get-bytevector-all p))	 
 	
-	 (bytes64 (base64-encode (get-bytevector-all p)))
-	  (dummy (close-port p))
-;	 (h (response-emit bytes #:headers '((content-type image/jpg))))
-;	  (dummy (pretty-print (number->string the-jpeg)))
-	 (tweet-request (make-oauth-request uri 'POST '()))
-	 (dummy (oauth-request-add-params tweet-request `( 
-	  						   (oauth_consumer_key . ,*oauth-consumer-key*)
-							   (oauth_nonce . ,(get-nonce 20 ""))
-							   (oauth_timestamp . ,(oauth1-timestamp))
-							   (oauth_token . ,*oauth-access-token*)
-							   (oauth_version . "1.0")
-							   (media_category . "tweet_image")
-							   (media_type . ,image-type)
-							 ;  (media_data . ,mymedia)
-							 ; (total_bytes . ,total-bytes)
+;; 	 (bytes64 (base64-encode (get-bytevector-all p)))
+;; 	  (dummy (close-port p))
+;; ;	 (h (response-emit bytes #:headers '((content-type image/jpg))))
+;; ;	  (dummy (pretty-print (number->string the-jpeg)))
+;; 	 (tweet-request (make-oauth-request uri 'POST '()))
+;; 	 (dummy (oauth-request-add-params tweet-request `( 
+;; 	  						   (oauth_consumer_key . ,*oauth-consumer-key*)
+;; 							   (oauth_nonce . ,(get-nonce 20 ""))
+;; 							   (oauth_timestamp . ,(oauth1-timestamp))
+;; 							   (oauth_token . ,*oauth-access-token*)
+;; 							   (oauth_version . "1.0")
+;; 							   (media_category . "tweet_image")
+;; 							   (media_type . ,image-type)
+;; 							 ;  (media_data . ,mymedia)
+;; 							 ; (total_bytes . ,total-bytes)
 							  						 
-							   )))
-	 (dummy (oauth1-request-sign tweet-request credentials oauth1-response #:signature oauth1-signature-hmac-sha1))
+;; 							   )))
+;; 	 (dummy (oauth1-request-sign tweet-request credentials oauth1-response #:signature oauth1-signature-hmac-sha1))
 	
-	; (dummy (oauth-request-add-param tweet-request 'media bytes64))
-	 )
-      (system (string-append "curl --cacert ../ca/cacert.pem -XPOST -F ‘data=@/home/mbc/Pictures/totvax.jpeg' --url " (oauth-request-http-url tweet-request )))
+;; 	; (dummy (oauth-request-add-param tweet-request 'media bytes64))
+;; 	 )
+;;       (system (string-append "curl --cacert ../ca/cacert.pem -XPOST -F ‘data=@/home/mbc/Pictures/totvax.jpeg' --url " (oauth-request-http-url tweet-request )))
   
 
  ;;   (oauth2-http-request tweet-request #:body #f )
 ;tweet-request
-    ))
+ ;;   ))
 
 
 (define (oauth1-upload-media-init  file-name)

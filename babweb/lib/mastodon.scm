@@ -31,16 +31,16 @@
 	   ))
 
 
-(define *oauth-consumer-key* (@@ (ebbot env) *oauth-consumer-key*))
-(define *oauth-consumer-secret* (@@ (ebbot env) *oauth-consumer-secret*))
-(define *bearer-token* (@@ (ebbot env) *bearer-token*))  ;;this does not change
-(define *oauth-access-token* (@@ (ebbot env) *oauth-access-token*))
-(define *oauth-token-secret* (@@ (ebbot env) *oauth-token-secret*))
-(define *client-id* (@@ (ebbot env) *client-id*))
-(define *client-secret* (@@ (ebbot env) *client-secret*))
+(define *oauth-consumer-key* (@@ (babweb lib env) *oauth-consumer-key*))
+(define *oauth-consumer-secret* (@@ (babweb lib env) *oauth-consumer-secret*))
+(define *bearer-token* (@@ (babweb lib env) *bearer-token*))  ;;this does not change
+(define *oauth-access-token* (@@ (babweb lib env) *oauth-access-token*))
+(define *oauth-token-secret* (@@ (babweb lib env) *oauth-token-secret*))
+(define *client-id* (@@ (babweb lib env) *client-id*))
+(define *client-secret* (@@ (babweb lib env) *client-secret*))
 
-(define *working-dir* (@@ (ebbot env) *working-dir*))
-(define *tweet-length* (@@ (ebbot env) *tweet-length*))
+(define *working-dir* (@@ (babweb lib env) *working-dir*))
+(define *tweet-length* (@@ (babweb lib env) *tweet-length*))
 
 
 
@@ -51,8 +51,8 @@
 	(bearer (string-append "'Authorization: Bearer " *bearer-token* "'"))
 	(image (string-append "file='@" i "'"))
 	(out-file (get-rand-file-name "f" "txt"))
-	(_ (pretty-print (string-append " *wd* in post-image-curl: " *working-dir*)))
-	(_ (pretty-print (string-append "getcwd in post-image-curl: " (getcwd))))
+;;	(_ (pretty-print (string-append " *wd* in post-image-curl: " *working-dir*)))
+;;	(_ (pretty-print (string-append "getcwd in post-image-curl: " (getcwd))))
 	
 	(command (string-append "curl -o " out-file " -X POST -H " bearer " -H 'Content-Type: multipart/form-data' https://mastodon.social/api/v2/media --form " image))
 	(_ (system command))
