@@ -11,7 +11,15 @@
 
 	    This is the environment: <%= theenv %><br>
 
+<form action="/test" method="post">
+   
+  <input type="text" id="pin" name="pin">
+ 
+  <button  type="submit">Submit</button>
 
+</form>
+
+<br>
 
 	    <br><br>
 

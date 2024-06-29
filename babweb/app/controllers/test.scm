@@ -24,8 +24,9 @@
   (lambda (rc)
     (let* ((sid (:session rc 'spawn))
 	   (myvar1 sid)
-;;	   (_ (session-set! sid "b" myvar1))
-	   
+	   ;;	   (_ (session-set! sid "b" myvar1))
+	   (pin  (:cookies-value rc "pin"))
+	    (access-token (get-access-token request-token pin))
 	   (_ (:cookies-update! rc ))
 ;;	   (_ (:cookies-remove! rc "custid"))
 	   (myvar (:cookies-value rc "custid"))

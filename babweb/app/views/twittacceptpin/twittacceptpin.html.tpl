@@ -4,11 +4,6 @@
 
 <@include header.tpl %>
   
-<h2>Sign in with Twitter</h2>
-<br><br> 
-
-Press here:    <a href="twittreg1?action=login">
-    <img class="twitter-btn"
-	 src="../img/sign-in-with-twitter.png"></a>
+Enter pin:
 
 <@include footer.tpl %>

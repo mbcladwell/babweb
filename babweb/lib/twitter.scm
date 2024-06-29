@@ -1,5 +1,5 @@
 (define-module (babweb lib twitter) 
- #:use-module (babweb lib env)
+#:use-module (babweb lib env)
  #:use-module (web client)
  #:use-module (srfi srfi-19) ;; date time
  #:use-module (srfi srfi-1)  ;;list searching; delete-duplicates in list 
@@ -36,20 +36,24 @@
 	   oauth1-post-tweet
 	   oauth2-post-tweet-recurse
 	   oauth1-post-tweet-recurse
+	   get-request-token
+	   get-access-token
+	   get-user-data
 	   main
 	   ))
 
-;; ;;(define *oauth-consumer-key* (@@ (babweb lib env) *oauth-consumer-key*))
-;; (define *oauth-consumer-secret* (@@ (babweb lib env) *oauth-consumer-secret*))
-;; (define *bearer-token* (@@ (babweb lib env) *bearer-token*))  ;;this does not change
-;; (define *oauth-access-token* (@@ (babweb lib env) *oauth-access-token*))
-;; (define *oauth-token-secret* (@@ (babweb lib env) *oauth-token-secret*))
-;; (define *client-id* (@@ (babweb lib env) *client-id*))
-;; (define *client-secret* (@@ (babweb lib env) *client-secret*))
+;; (define *oauth-consumer-key* #f)
+;; (define *oauth-consumer-secret* #f)
+;; (define *bearer-token* #f)
+;; (define *oauth-access-token* #f)
+;; (define *oauth-token-secret* #f)
+;; (define *client-id* #f)
+;; (define *client-secret* #f)
+;; (define *working-dir* (getcwd))
+;; (define *tweet-length* #f)
 
 
-  	 
- (define-record-type <response-token>
+(define-record-type <response-token>
   (make-response-token token_type access_token)
   response-token?
   (token_type response-token-type)
@@ -81,23 +85,41 @@
 
 
 (define (get-request-token k s)
+;;(define (get-request-token )
   ;; returns a response: #<<oauth1-response> token: "Ia2k4gAAAAABb11DAAABgJn1fzQ" secret: "Pi8PTBLsyuE7tsfB1X2anChF3WyP1R7e" params: ()>
   ;; retrieve with  token: (oauth1-response-token a)
   ;;                secret: (oauth1-response-token-secret a)
-(let*(	 (uri "https://api.twitter.com/oauth/request_token")
+  (let*( (uri "https://api.twitter.com/oauth/request_token")
 	 ;;(credentials (make-oauth1-credentials oauth-access-token oauth-token-secret))
 	 (credentials (make-oauth1-credentials k s))	 
+;;	 (credentials (make-oauth1-credentials *oauth-consumer-key* *oauth-consumer-secret*))	 
 	 (a  (oauth1-client-request-token uri credentials "oob"
 					 #:method 'POST
 					 #:params '()
 					 #:signature oauth1-signature-hmac-sha1)))	
   a))
 
-(define (get-request-verifier oauth_tokenv oauth-verifierv)
+
+;; (define (get-pin rt)
+;; ;;rt is the request token provided by get-request-token
+;;   (let* ((uri (string-append "https://api.twitter.com/oauth/authenticate?oauth_token=" rt))
+;;          (out (receive (response body)
+;; 		   (oauth1-http-request verifier-request #:body #f #:extra-headers '((oauth_callback_confirmed . "true")))
+;; 		(oauth1-http-body->response response body))))
+;;     #f
+
+	 
+;;        ))
+  
+  
+
+(define (get-access-token oauth_tokenv oauth-verifierv)
   ;;oauth_token is the token from get-request-token
   ;;oauth-verifier is the pin manually copied from the ____ page
   ;;output is a 'response object' as with get-request-token
-  (let* ( (verifier-request (make-oauth-request "https://api.twitter.com/oauth/access_token" 'POST '()))
+  (let* ((_ (pretty-print (string-append "in get-access-token: " oauth_tokenv)))
+	 (_ (pretty-print (string-append "in get-access-token: " oauth-verifierv)))
+	 (verifier-request (make-oauth-request "https://api.twitter.com/oauth/access_token" 'POST '()))
 	  (dummy (oauth-request-add-params verifier-request `( (oauth_token . ,oauth_tokenv)
 	  						       (oauth_verifier . ,oauth-verifierv)
 							      (oauth_callback_confirmed . "true")
@@ -119,6 +141,39 @@
 ;;                              key                                 secret                            custid
 ;;guile -e main -s ./get-access-token.scm 2R103u4mp3iwy8MtjRY5LJXsw Cl5Jx2XRgYvo4GmXT7uZooq8jkXUiyYxwhCOVcd6RqF4LyMP0J eddibbot
 ;;#<<oauth1-response> token: "856105513800609792-afMxtRwKgu6gmq2TH9ScCAFav5kH1FA" secret: "QhqicaaTpMAe8UYTb0kUO41WwROHav3lCqo132cXZNEVG" params: (("user_id" . "856105513800609792") ("screen_name" . "mbcladwell"))>
+
+
+;;(define (get-user-data oauth_tokenv oauth-verifierv)
+ ;;oauth_token is the token from get-request-token
+  ;;oauth-verifier is the pin manually copied from the ____ page
+  ;;output is a 'response object' as with get-request-token
+(define (get-user-data oauth-verifier access-token)
+  ;;access-token contains token, tokensecret
+  ;;what is oauthVerifier inTwittService? comes from https://api.twitter.com/oauth/authenticate
+  ;;so looks like the PIN
+  (let* ((tokenv (oauth1-response-token access-token))
+	 (secretv (oauth1-response-token-secret access-token))
+	 (user-data-request (make-oauth-request "https://api.twitter.com/1.1/account/verify_credentials.json" 'GET '()))
+	 (_ (oauth-request-add-params user-data-request `((oauth_consumer_key . ,*oauth-consumer-key*)
+							  (oauth_nonce . ,(get-nonce 42 ""))
+							  (oauth_timestamp . ,(oauth1-timestamp))
+							  (oauth_token . ,tokenv)
+							  (oauth_version . "1.0")					 
+							  )))
+	                                                       
+	  (out (receive (response body)
+		   (oauth1-http-request user-data-request #:body #f				
+					#:signature oauth1-signature-hmac-sha1
+					#:extra-headers '((access_token_secret . ,secretv)))
+		 (oauth1-http-body->response response body)))
+	  )    
+    out
+;; (receive (response body)
+;; 	   	   (oauth1-http-request verifier-request #:body #f #:extra-headers '((oauth_callback_confirmed . "true")))
+;; 	  	 (pretty-print (utf8->string body)))
+    ))
+
+
 
 
 (define (oauth2-post-tweet  text )
@@ -220,7 +275,7 @@
 	   (dummy (pretty-print uri))
 	   (dummy (activate-readline))
 	   (pin (readline "\nEnter pin: "))
-	  (oauth1-response (get-request-verifier token pin))  ;;user-id and screenname are the customer
+	  (oauth1-response (get-access-token token pin))  ;;user-id and screenname are the customer
 	  ;; (token (oauth1-response-token oauth1-response))
 	  ;; (secret (oauth1-response-token-secret oauth1-response))
 	  ;; (params (oauth1-response-params oauth1-response))

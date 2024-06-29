@@ -1,7 +1,7 @@
 ;; Controller welcome definition of babweb
 ;; Please add your license header here.
 ;; This file is generated automatically by GNU Artanis.
-(define-module (app controllers register)
+(define-module (app controllers twittacceptpin)
   #:use-module (artanis mvc controller)
   #:use-module (artanis utils)
   #:use-module (artanis artanis)
@@ -13,17 +13,17 @@
   #:use-module (ice-9 pretty-print)
   )
   
-(define-artanis-controller register) ; DO NOT REMOVE THIS LINE!!!
+(define-artanis-controller twittacceptpin) ; DO NOT REMOVE THIS LINE!!!
 
 
-(get "/register"
+(get "/twittacceptpin"
       #:cookies '(names prjid sid )
 ;;      #:from-post 'qstr
   (lambda (rc)
     (let* (
 	   
 	 )
-	  (view-render "register" (the-environment)))
+	  (view-render "twittacceptpin" (the-environment)))
   ))
 
 
