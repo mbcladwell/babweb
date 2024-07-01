@@ -1,0 +1,5 @@
+;; Controller welcome definition of babweb
+;; Please add your license header here.
+;; This file is generated automatically by GNU Artanis.
+(define-artanis-controller welcome) ; DO NOT REMOVE THIS LINE!!!
+
