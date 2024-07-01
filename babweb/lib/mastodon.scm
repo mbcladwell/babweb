@@ -158,7 +158,7 @@
 	    (mast-post-toot-curl-recurse  (cdr lst) new-reply-id #f counter hashtags)))))
 
 
-(define (mastsoc-runner)
+(define (mastodon-runner)
 (let* ( ;;(_ (get-envs))
 	  (counter (get-counter))
 	  (all-excerpts (get-all-excerpts-alist))
