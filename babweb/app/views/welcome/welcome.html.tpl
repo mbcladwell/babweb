@@ -26,6 +26,7 @@
 	    <li>Black Lives Matter
 		<li>Fair and honest election
 		    <li>Mostly peaceful protests
+			<li>Believe the science
     </ul>
     Do you have a message to spread, truths to reveal, consensus to build? Spread your message effortlessly with a tweet bot. We can assist you with using our proprietary software that will automate the process of tweeting. 
     <br><br>
@@ -37,11 +38,11 @@
     </blockquote>
     <br>
 
-    Please view the <a href="process.php">Process</a> page to learn what we need to help you.<br><br>
+    Please view the <a href="process">Process</a> page to learn what we need to help you.<br><br>
 
-    Register <a href="register1.php">here</a> to get your bot up and running.<br><br>
+    Register <a href="register1">here</a> to get your bot up and running.<br><br>
 
-    <a href="faqs.php">FAQs</a>
+    <a href="faqs">FAQs</a>
 
 </div>
 

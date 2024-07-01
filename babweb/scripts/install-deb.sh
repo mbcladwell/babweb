@@ -137,7 +137,7 @@ _msg "Setting up babweb...."
    ## sudo sed -i "s/maxplates = 100/maxplates = $MAXPLATES/"  $HOME/.config/babweb/artanis.conf 
 
 
-
+##note that $HOME/bin will automatically get put on PATH by aws  see ./.profile
 
     
 }
@@ -149,6 +149,12 @@ _msg "Setting up artanis...."
     guix package -i artanis
    . $GUIX_PROFILE/etc/profile
 
+   git clone git@github.com:mbcladwell/babweb.git
+   mkdir -p $HOME/.config/babweb
+   mkdir -p /tmp/babweb/tmp/cache
+   mkdir -p /tmp/babweb/prv/session
+   cp $HOME/babweb/babweb/conf/artanis.conf $HOME/.config/babweb 
+ ##   sudo sed -i "s/host.name = 127.0.0.1/host.name = $IPADDRESS/" $HOME/.config/babweb/artanis.conf
 
     
 }
