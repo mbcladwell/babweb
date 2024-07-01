@@ -1,0 +1,9 @@
+#!/bin/bash
+PATH_INTO_STORE=/home/admin/babweb
+export LC_ALL="C"
+export PATH="$HOME/gnu/store/0wz29yn342p2f6wjggij9gb8v30fdbhb-artanis-0.7.69de573/bin${PATH:+:}$PATH"
+export GUILE_LOAD_PATH="$HOME/gnu/store/0wz29yn342p2f6wjggij9gb8v30fdbhb-artanis-0.7.69de573/share/guile/site/3.0:$HOME/gnu/store//p5f006jcr83jc7m731vhvjdkr2j0hnp3-guile-json-4.7.3/share/guile/site/3.0${GUILE_LOAD_PATH:+:}$GUILE_LOAD_PATH"
+export GUIX_LOCPATH="$HOME/gnu/store/ln6hxqjvz6m9gdd9s97pivlqck7hzs99-glibc-2.35/share/locale"
+mkdir -p /var/tmp/babweb/tmp/cache
+cd  /home/admin/babweb/babweb
+art.in work -h0.0.0.0 --config=$HOME/.config/babweb/artanis.conf
