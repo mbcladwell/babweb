@@ -25,7 +25,6 @@
  #:use-module (oauth oauth1 credentials)
  #:use-module (oauth oauth1 signature)
  #:use-module (babweb lib twitter)
-  #:use-module (fibers)
 
   )
   
@@ -39,7 +38,7 @@
 			   (sid (:cookies-value rc "sid"))
 			   (request-token (:cookies-value rc "reqtok"))
 			   (pin (uri-decode (:from-post rc 'get-vals "pin")))
-			  (access-token (run-fibers (get-access-token request-token pin) #:drain? #t))
+			  (access-token  (get-access-token request-token pin) )
 			  (acc-token (oauth1-response-token access-token))
 			   (_ (:cookies-set! rc 'acctk "acctk" acc-token))
 			   (acc-secret (oauth1-response-token-secret access-token))

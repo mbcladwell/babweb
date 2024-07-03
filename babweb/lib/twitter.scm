@@ -32,7 +32,6 @@
  #:use-module (ice-9 textual-ports)
  #:use-module (babweb lib image)
  #:use-module (babweb lib utilities)
- #:use-module (fibers)
  #:export (oauth2-post-tweet
 	   oauth1-post-tweet
 	   oauth2-post-tweet-recurse
