@@ -24,22 +24,26 @@
  #:use-module (oauth oauth1 utils)
  #:use-module (oauth oauth1 credentials)
  #:use-module (oauth oauth1 signature)
-  #:use-module (babweb lib twitter)
+ #:use-module (babweb lib twitter)
+  #:use-module (fibers)
+
   )
   
 (define-artanis-controller getpin) ; DO NOT REMOVE THIS LINE!!!
 
 (post "/getpin"
       #:from-post 'qstr
-      #:cookies '(names reqtok sid)
+      #:cookies '(names reqtok acctk accscrt sid)
  (lambda (rc)
 		    (let* (
 			   (sid (:cookies-value rc "sid"))
 			   (request-token (:cookies-value rc "reqtok"))
 			   (pin (uri-decode (:from-post rc 'get-vals "pin")))
-			  (access-token (get-access-token request-token pin))
-			  (tokenv (oauth1-response-token access-token))
-			 (secretv (oauth1-response-token-secret access-token))
+			  (access-token (run-fibers (get-access-token request-token pin) #:drain? #t))
+			  (acc-token (oauth1-response-token access-token))
+			   (_ (:cookies-set! rc 'acctk "acctk" acc-token))
+			   (acc-secret (oauth1-response-token-secret access-token))
+			    (_ (:cookies-set! rc 'accscrt "accscrt" acc-secret))
 			 ;; (user-data (get-user-data pin access-token))
 			  
 			   )

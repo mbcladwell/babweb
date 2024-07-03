@@ -7,11 +7,8 @@
     <head></head>
 	<body>
 
-	    <%= myvar %><br>
 
-	    This is the environment: <%= theenv %><br>
-
-<form action="/test" method="post">
+<form action="/getpin" method="post">
    
   <input type="text" id="pin" name="pin">
  
@@ -21,9 +18,5 @@
 
 <br>
 
-	    <br><br>
-
-
-	    <br><br>
 
 	    <@include footer.tpl %>

@@ -32,6 +32,7 @@
  #:use-module (ice-9 textual-ports)
  #:use-module (babweb lib image)
  #:use-module (babweb lib utilities)
+ #:use-module (fibers)
  #:export (oauth2-post-tweet
 	   oauth1-post-tweet
 	   oauth2-post-tweet-recurse
@@ -93,7 +94,8 @@
 	 ;;(credentials (make-oauth1-credentials oauth-access-token oauth-token-secret))
 	 (credentials (make-oauth1-credentials k s))	 
 ;;	 (credentials (make-oauth1-credentials *oauth-consumer-key* *oauth-consumer-secret*))	 
-	 (a  (oauth1-client-request-token uri credentials "oob"
+;;	 (a  (oauth1-client-request-token uri credentials "oob"    ;;for pin
+	 (a  (oauth1-client-request-token uri credentials "http://build-a-bot.biz/twittreg2"
 					 #:method 'POST
 					 #:params '()
 					 #:signature oauth1-signature-hmac-sha1)))	
@@ -117,17 +119,20 @@
   ;;oauth_token is the token from get-request-token
   ;;oauth-verifier is the pin manually copied from the ____ page
   ;;output is a 'response object' as with get-request-token
-  (let* ((_ (pretty-print (string-append "in get-access-token: " oauth_tokenv)))
+  (let* ((_ (pretty-print (string-append "guile -L /home/mbc/projects/babweb -L /home/mbc/projects/guile-oauth -e '(babweb lib twitter)' -s /home/mbc/projects/babweb/babweb/lib/twitter.scm " oauth_tokenv " " oauth-verifierv)))
 	 (_ (pretty-print (string-append "in get-access-token: " oauth-verifierv)))
-	 (verifier-request (make-oauth-request "https://api.twitter.com/oauth/access_token" 'POST '()))
+	 (uri "https://api.twitter.com/oauth/access_token")
+	 (verifier-request (make-oauth-request uri 'POST '()))
 	  (dummy (oauth-request-add-params verifier-request `( (oauth_token . ,oauth_tokenv)
 	  						       (oauth_verifier . ,oauth-verifierv)
 							      (oauth_callback_confirmed . "true")
 							       )))
 	                                                       
 	  (out (receive (response body)
-		   (oauth1-http-request verifier-request #:body #f #:extra-headers '((oauth_callback_confirmed . "true")))
+;;		   (oauth1-http-request verifier-request #:body #f #:extra-headers '((oauth_callback_confirmed . "true")))
+		   (oauth1-http-request verifier-request #:body #f )
 		 (oauth1-http-body->response response body)))
+	  (_ (pretty-print "end-of-get-access-token"))
 	  )    
     out
 ;; (receive (response body)
@@ -262,7 +267,7 @@
 	      ))  ))
        
 
-
+;; guile -L /home/mbc/projects/babweb  -e '(babweb lib twitter)' -s /home/mbc/projects/babweb/babweb/lib/twitter.scm 
 (define (main args)
   ;;arg1 is consumer_key
   ;;arg2 is consumer_secret
@@ -275,7 +280,8 @@
 	   (dummy (pretty-print uri))
 	   (dummy (activate-readline))
 	   (pin (readline "\nEnter pin: "))
-	  (oauth1-response (get-access-token token pin))  ;;user-id and screenname are the customer
+	 ;; (oauth1-response (get-access-token token pin))  ;;user-id and screenname are the customer
+	  (oauth1-response (get-access-token (cadr args) (caddr args)))  ;;user-id and screenname are the customer
 	  ;; (token (oauth1-response-token oauth1-response))
 	  ;; (secret (oauth1-response-token-secret oauth1-response))
 	  ;; (params (oauth1-response-params oauth1-response))

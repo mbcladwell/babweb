@@ -100,7 +100,7 @@ updatesys()
 {
     sudo DEBIAN_FRONTEND=noninteractive apt-get --assume-yes update
     sudo DEBIAN_FRONTEND=noninteractive apt-get --assume-yes upgrade
-    sudo DEBIAN_FRONTEND=noninteractive apt-get  --assume-yes install gnupg nscd nano git curl wget cron
+    sudo DEBIAN_FRONTEND=noninteractive apt-get  --assume-yes install gnupg nscd nano git curl wget cron lsof
     sudo DEBIAN_FRONTEND=noninteractive apt-get  --assume-yes install guix
     
 }

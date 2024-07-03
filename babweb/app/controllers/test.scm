@@ -17,20 +17,14 @@
 (define-artanis-controller test) ; DO NOT REMOVE THIS LINE!!!
 
 
-(get "/test"
-     #:session 'spawn
-      #:cookies '(names custid sid )
-;;      #:from-post 'qstr
+(post "/test"
+;;     #:session 'spawn
+      #:cookies '(names pin sid )
+      #:from-post 'qstr
   (lambda (rc)
-    (let* ((sid (:session rc 'spawn))
-	   (myvar1 sid)
-	   ;;	   (_ (session-set! sid "b" myvar1))
-	   (pin  (:cookies-value rc "pin"))
-	    (access-token (get-access-token request-token pin))
-	   (_ (:cookies-update! rc ))
-;;	   (_ (:cookies-remove! rc "custid"))
-	   (myvar (:cookies-value rc "custid"))
-	   (theenv (the-environment))
+    (let* (
+	   (sid  (:cookies-value rc "sid"))
+;;	    (access-token (get-access-token request-token pin))
 	   
 	 )
 	  (view-render "test" (the-environment)))

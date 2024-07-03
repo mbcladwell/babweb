@@ -4,7 +4,7 @@
 
 <@include header.tpl %>
 
-<%= tokenv %>
+<%= tokenv %><br>
 <%= secretv %>
 
 <@include footer.tpl %>
