@@ -169,7 +169,7 @@
 	  (hashtags (get-all-hashtags-string))
 
 	  (media-directive (assoc-ref entity "image"))
-	  (image-file (get-image-file-name media-directive))
+	  (image-file (if (string=? media-directive "none") #f (get-image-file-name media-directive)))
 	  (media-id (if image-file (mast-post-image-curl image-file) #f))
 	  (_ (set-counter new-counter)))
     (mast-post-toot-curl-recurse tweets #f media-id 0 hashtags)

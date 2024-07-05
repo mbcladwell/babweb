@@ -68,6 +68,7 @@
   (close-port p)))
 
 
+;;guile -L /home/mbc/projects/babweb -e '(babweb lib format)' -s /home/mbc/projects/babweb/babweb/lib/format.scm . destination.txt
 
 (define (main args)
   ;; args: '( "working-dir" "new-excerpts-file-name"  )
