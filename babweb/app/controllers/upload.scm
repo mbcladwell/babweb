@@ -40,11 +40,13 @@
 (post "/upload/getcontent"
       #:cookies '(names sid custid)
     ;;  #:from-post 'qstr
-      #:from-post `(store #:path (current-upload-path) #:sync #t #:simple-ret? #f ) 
+      #:from-post `(store #:path ,(current-upload-path)
+			  #:sync #t
+			  #:simple-ret? #f ) 
  (lambda (rc)
    (let* (;;(file1 "notmod")
-	  (custid (:cookies-value rc "custid" ))
-	  ;;(custid "6789")
+	  ;; (custid (:cookies-value rc "custid" ))
+	  (custid "6789")
 	  ;;	  (file-dest (string-append "cust" custid))
 	  (blah (:from-post rc 'store))
 	  (file-names (extract-file-names blah))
@@ -53,6 +55,7 @@
 	  (specifics (caddr file-names))
 	  (validation-text (get-validation-text file-names))
 	  (current-up-path (current-upload-path))
+	 ;; (process-message "process messaged shorted")
 	  (process-message (process-downloaded-files custid file-names))
 	  ;;(process-message "blah")
 	  ;;(sid (:cookie-ref rc "sid"))
@@ -196,7 +199,7 @@
 	 (process-message (if (equal? raw-quotes-file "null")
 			      process-files-error-message
 			      (let* ((new-quotes-file (string-append working-dir "/" raw-quotes-file))
-				     (_ (rename-file (string-append "./babdata/" raw-quotes-file) new-quotes-file))
+				     (_ (rename-file (string-append cup "/" raw-quotes-file) new-quotes-file))
 				     (all-new-quotes (get-all-new-quotes  new-quotes-file))
 				     )
 				(begin
@@ -205,12 +208,12 @@
 				  (delete-file new-quotes-file)
 				  (if (equal? randoms "null") #f
 				      (begin
-					(rename-file (string-append "./babdata/" randoms) (string-append working-dir "/" randoms))
+					(rename-file (string-append cup "/" randoms) (string-append working-dir "/" randoms))
 					(unzip (string-append working-dir "/" randoms) (string-append working-dir "/random" ))
 					(delete-file (string-append working-dir "/" randoms))))
 				  (if (equal? specifics "null") #f
 				      (begin
-					(rename-file (string-append "./babdata/" specifics) (string-append working-dir "/" specifics))
+					(rename-file (string-append cup "/" specifics) (string-append working-dir "/" specifics))
 					(unzip (string-append working-dir "/" specifics) (string-append working-dir "/specific" ))
 					(delete-file (string-append working-dir "/" specifics)))))
 			      

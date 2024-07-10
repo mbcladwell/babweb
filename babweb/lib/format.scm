@@ -15,12 +15,15 @@
   #:use-module (ice-9 pretty-print)
   #:use-module (json)
   #:use-module (ice-9 textual-ports)
+  #:use-module (babweb lib html)
   #:export (main))
 
 ;;input: a text file with quotes that are delimitted by <CR><LF>
 ;;output: a json that is appropriate for consing to the json database. The quotes will be annotated with source, and image if available.
 
 ;; database fields: id, content, image
+
+;;https://dthompson.us/posts/rendering-html-with-sxml-and-gnu-guile.html
 
 (define working-dir "")
 (define db "/db.json")                   ;;the database that provides quotes for tweets and is processed through
@@ -32,6 +35,19 @@
     	 (all-quotes   (string-split  (get-string-all p) #\newline)))    
     all-quotes))
 
+(define (clean-chars s)
+  ;;remove offensive characters
+  (let* ((out (string-replace-substring s "'" "%27"))
+	 (out (string-replace-substring out "’" "%27"))
+	 (out (string-replace-substring out "\"" "%22"))
+	 (out (string-replace-substring out "“" "%22"))
+	 (out (string-replace-substring out "”" "%22"))
+	 (out (string-replace-substring out "…" "..."))
+
+	 )
+    out))
+
+
 
 (define (process-quotes old new counter )
   ;; old: original list
@@ -41,12 +57,12 @@
   (if (null? (cdr old))
       (begin
 	(if (> (string-length (car old)) 2)
-	(set! new (cons `(,(cons "content"  (car old)) ("image" . ,(cadr old))  ("id" . ,counter)) new)))
+	(set! new (cons `(,(cons "content"  (clean-chars (car old))) ("image" . ,(cadr old))  ("id" . ,counter)) new)))
 	new)
       (begin
 	(if (> (string-length (car old)) 2)
 	    (begin
-	      (set! new (cons `(,(cons "content" (car old)) ("image" . ,(cadr old))("id" . ,counter)) new))
+	      (set! new (cons `(,(cons "content" (clean-chars (car old))) ("image" . ,(cadr old))("id" . ,counter)) new))
 	      (set! counter (+ 1 counter))))
 	(process-quotes (cddr old) new counter ))
       ))
