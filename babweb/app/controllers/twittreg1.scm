@@ -31,14 +31,14 @@
 
 
 (get "/twittreg1"
-      #:cookies '(names reqtok sid )
+      #:cookies '(names reqtok sid)
       #:from-post 'qstr
   (lambda (rc)
     (let* (
-	   (action (:from-post rc 'get "action"))
-	   (request-token (oauth1-response-token (get-request-token *oauth-consumer-key* *oauth-consumer-secret* )))
-	   (_ (:cookies-set! rc 'reqtok "reqtok" request-token))
-	   (uri (string-append "https://api.twitter.com/oauth/authenticate?oauth_token=" request-token))
+	   (custid (:from-post rc 'get "custid"))
+	   (code (:from-post rc 'get "code"))
+	  ;; (_ (:cookies-set! rc 'reqtok "reqtok" request-token))
+	  ;; (uri (string-append "https://api.twitter.com/oauth/authenticate?oauth_token=" request-token))
 	   )
        (view-render "twittreg1" (the-environment)))
 ;;	  (redirect-to rc  "/twittacceptpin" ))

@@ -1,0 +1,1 @@
+{"token_type":"bearer","expires_in":7200,"access_token":"WWE1NG1Bd01xd3U1Tm0wTmh5WHRuSG90WFNWTUxQN0xOMmNXR2ZmM19IQ2d2OjE3MjExNTc5NjEyODY6MToxOmF0OjE","scope":"tweet.write users.read tweet.read offline.access","refresh_token":"Q2ZQaXppZWxtY0dCdGlDRmlrWDA2dWFxYm05S0EwanFtZTN6ZExxUkRvSW1FOjE3MjExNTc5NjEyODY6MTowOnJ0OjE"}
