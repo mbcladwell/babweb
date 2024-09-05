@@ -7,6 +7,8 @@
 <%= custid %> 
 <br>
 <br>
-<%= code %> 
+<%= expires-in %> 
+<br>
+<br>
 
 <@include footer.tpl %>

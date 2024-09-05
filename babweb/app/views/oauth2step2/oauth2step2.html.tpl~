@@ -7,9 +7,8 @@
 <%= custid %> 
 <br>
 <br>
-<%= code %> 
-<br>
-<br>
 <%= response %> 
+<br>
+<br>
 
 <@include footer.tpl %>

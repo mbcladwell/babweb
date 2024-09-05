@@ -10,7 +10,8 @@
  #:use-module (ice-9 string-fun)  ;;string-replace-substring
  #:use-module (ice-9 pretty-print)
  #:use-module (json)
- #:use-module (rnrs bytevectors)
+ #:use-module (rnrs bytevectors )
+;; #:use-module (rnrs io ports #:select ())
  #:use-module (ice-9 textual-ports)
  #:use-module (babweb lib env)
  #:use-module (ice-9 ftw);;scandir
@@ -24,7 +25,13 @@
 	   get-all-hashtags-string
 	   get-nonce
 	   get-next-val-param
-	   get-image-file-name))
+	   get-image-file-name
+	   get-expired
+	   encrypt-alist
+	   decrypt-alist
+	   envs-report
+	   lst-to-query-string
+	   call-command-with-output-to-string))
 
 
 (define (add-two-lists lst base id)
@@ -169,3 +176,64 @@
 	((string=? directive "random")(string-append *working-dir* "/random/" (get-random-image (string-append *working-dir* "/random/"))) )	
 	(else (string-append *working-dir* "/specific/" directive))
      ))
+
+(define (get-expired expires-in)
+  ;;expires-in: how many seconds before expiration; an integer
+  (+ (time-second (current-time))   expires-in))
+
+
+(define (encrypt-alist alist fname)
+  (let* ((json-string (scm->json-string alist))
+	 (out-file (get-rand-file-name "f" "txt"))
+	 (p  (open-output-file out-file))
+	 (command (string-append "gpg --output " fname " --encrypt --recipient " *gpg-key* " " out-file)))
+  (begin
+    (put-string p json-string)
+    (force-output p)
+    (close-port p)
+    (system command)
+    (delete-file out-file)
+    )))
+
+(define (decrypt-alist fname)
+  (let* ((out-file (get-rand-file-name "f" "txt"))
+	 (command  (string-append "gpg --output " out-file " --decrypt " fname))
+	 (_ (system command))
+	 (p  (open-input-file  out-file))
+	 (a (get-string-all p))
+	 (_ (delete-file out-file)))
+    (json-string->scm  a)))
+  
+(define (lst-to-query-string lst s)
+  ;;start with (lst-to-query-string lst "?")
+  (if (null? (cdr lst))
+      (begin 
+	(set! s (string-append s (caar lst) "=" (cadar lst)))
+	s)
+      (begin
+	(set! s (string-append s (caar lst) "=" (cadar lst) "&"))
+	(lst-to-query-string (cdr lst) s))))
+
+(define (envs-report file-name)
+  (let* ( (vals (decrypt-alist file-name))
+	  (expired (assoc-ref vals "expired"))
+	  (remaining (if expired (- expired (time-second (current-time))) #f))	 
+	  )
+    (begin
+      (pretty-print  vals)
+      (if remaining (pretty-print (string-append "remaining: " (number->string remaining ) "  [negative indicates expired]")))
+      )))
+
+(define (call-command-with-output-to-string cmd)
+  ;;(import (ice-9 rdelim) (ice-9 popen) (rnrs io ports))
+  ;;https://www.draketo.de/software/guile-capture-stdout-stderr.html
+  (let* ((out-cons (pipe))
+         (port (with-output-to-port (cdr out-cons)
+                 (lambda() (open-input-pipe cmd))))
+         (_ (setvbuf (car out-cons) 'block 
+             (* 1024 1024 16)))
+         (result (read-delimited "" port)))
+    (close-port (cdr out-cons))
+    (values
+     result
+     (read-delimited "" (car out-cons)))))

@@ -8,9 +8,10 @@
  ;; Put whatever you want to be called before server initilization here
 
  (init-server #:statics '(png gif jpg jpeg ico html js json csv xml css woff woff2 ttf))
- (add-to-load-path (string-append (immutable-toplevel) "/lib"))
- (add-to-load-path  "/home/mbc/projects/babweb/babweb/app/views/upload")
+;; (add-to-load-path (string-append (immutable-toplevel) "/lib"))
+;; (add-to-load-path  "/home/mbc/projects/babweb/babweb/app/views/upload")
  (add-to-load-path  "/home/mbc/projects/babweb")
  (add-to-load-path  "/home/mbc/.guix-profile/share/guile/site/3.0")
 (add-to-load-path "/home/mbc/projects/guile-oauth")
  ;; Put whatever you want to be called before server running here
+(use-modules (babweb lib env))

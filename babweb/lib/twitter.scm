@@ -1,5 +1,5 @@
 (define-module (babweb lib twitter) 
-#:use-module (babweb lib env)
+ #:use-module (babweb lib env)
  #:use-module (web client)
  #:use-module (srfi srfi-19) ;; date time
  #:use-module (srfi srfi-1)  ;;list searching; delete-duplicates in list 
@@ -37,20 +37,12 @@
 	   oauth2-post-tweet-recurse
 	   oauth1-post-tweet-recurse
 	   get-request-token
-	   get-access-token
+	   init-get-access-token
+	   repeat-get-access-token
 	   get-user-data
+	   twurl-get-media-id
 	   main
 	   ))
-
-;; (define *oauth-consumer-key* #f)
-;; (define *oauth-consumer-secret* #f)
-;; (define *bearer-token* #f)
-;; (define *oauth-access-token* #f)
-;; (define *oauth-token-secret* #f)
-;; (define *client-id* #f)
-;; (define *client-secret* #f)
-;; (define *working-dir* (getcwd))
-;; (define *tweet-length* #f)
 
 
 (define-record-type <response-token>
@@ -101,50 +93,6 @@
   a))
 
 
-;; (define (get-pin rt)
-;; ;;rt is the request token provided by get-request-token
-;;   (let* ((uri (string-append "https://api.twitter.com/oauth/authenticate?oauth_token=" rt))
-;;          (out (receive (response body)
-;; 		   (oauth1-http-request verifier-request #:body #f #:extra-headers '((oauth_callback_confirmed . "true")))
-;; 		(oauth1-http-body->response response body))))
-;;     #f
-
-	 
-;;        ))
-  
-  
-
-(define (get-access-token oauth_tokenv oauth-verifierv)
-  ;;oauth_token is the token from get-request-token
-  ;;oauth-verifier is the pin manually copied from the ____ page
-  ;;output is a 'response object' as with get-request-token
-  (let* ((_ (pretty-print (string-append "guile -L /home/mbc/projects/babweb -L /home/mbc/projects/guile-oauth -e '(babweb lib twitter)' -s /home/mbc/projects/babweb/babweb/lib/twitter.scm " oauth_tokenv " " oauth-verifierv)))
-	 (_ (pretty-print (string-append "in get-access-token: " oauth-verifierv)))
-	 (uri "https://api.twitter.com/oauth/access_token")
-	 (verifier-request (make-oauth-request uri 'POST '()))
-	  (dummy (oauth-request-add-params verifier-request `( (oauth_token . ,oauth_tokenv)
-	  						       (oauth_verifier . ,oauth-verifierv)
-							      (oauth_callback_confirmed . "true")
-							       )))
-	                                                       
-	  (out (receive (response body)
-;;		   (oauth1-http-request verifier-request #:body #f #:extra-headers '((oauth_callback_confirmed . "true")))
-		   (oauth1-http-request verifier-request #:body #f )
-		 (oauth1-http-body->response response body)))
-	  (_ (pretty-print "end-of-get-access-token"))
-	  )    
-    out
-;; (receive (response body)
-;; 	   	   (oauth1-http-request verifier-request #:body #f #:extra-headers '((oauth_callback_confirmed . "true")))
-;; 	  	 (pretty-print (utf8->string body)))
-    ))
-
-;#<<oauth1-response> token: "856105513800609792-ttQfcoxgrGJnwaLfjEdyagDjL9lfbTP" secret: "EfoSSaCHSnmfkhfU2r5oiU03cA6Kb6SLLAr7rxZO73Tfg" params: (("user_id" . "856105513800609792") ("screen_name" . "mbcladwell"))>
-
-
-;;                              key                                 secret                            custid
-;;guile -e main -s ./get-access-token.scm 2R103u4mp3iwy8MtjRY5LJXsw Cl5Jx2XRgYvo4GmXT7uZooq8jkXUiyYxwhCOVcd6RqF4LyMP0J eddibbot
-;;#<<oauth1-response> token: "856105513800609792-afMxtRwKgu6gmq2TH9ScCAFav5kH1FA" secret: "QhqicaaTpMAe8UYTb0kUO41WwROHav3lCqo132cXZNEVG" params: (("user_id" . "856105513800609792") ("screen_name" . "mbcladwell"))>
 
 
 ;;(define (get-user-data oauth_tokenv oauth-verifierv)
@@ -191,30 +139,25 @@
 	 (tweet-request (make-oauth-request uri 'POST '()))
 	 (dummy (oauth-request-add-params tweet-request `( 
 	  						  (oauth_consumer_key . ,*oauth-consumer-key*)
-							 ; (oauth_consumer_secret . ,*oauth-consumer-secret*)
-							 ; (oauth_token_secret .,*oauth-token-secret*)
-							  (oauth_nonce . ,(get-nonce 20 ""))
+							  (oauth_nonce . ,(oauth1-nonce))
 							  (oauth_timestamp . ,(oauth1-timestamp))
-							
 							   (oauth_token . ,*oauth-access-token*)
 							   (oauth_version . "1.0")
+							   (response_type . "code")
+							   (client_id . ,*client-id*)
 							   
-							  ; (Content-type . "application/json")
-							  ; (json . ,data)
 							   )))
 	 (dummy (oauth1-request-sign tweet-request credentials oauth1-response #:signature oauth1-signature-hmac-sha1))
 	 (dummy (oauth-request-add-param tweet-request 'content-type "application/json"))
 	 (dummy (oauth-request-add-param tweet-request 'Authorization "Bearer"))
-	 (dummy (oauth-request-add-param tweet-request 'scope "tweet.write"))
+	 (dummy (oauth-request-add-param tweet-request 'scope "tweet.read%20users.read%20follows.read%20follows.write"))
 	 
 	 )
-(oauth2-http-request tweet-request #:body data )))
+    (oauth2-http-request tweet-request #:body data )))
+
 ;;(oauth1-http-request tweet-request #:body data #:extra-headers '((User-Agent . "v2CreateTweetRuby")(Content-type . "application/json")  ))))
 
 ;; curl -X POST https://api.twitter.com/2/tweets -H "Authorization: Bearer "1516431938848006149-ZmM56NXft0k4rieBIH3Aj8A5727ALH" -H "Content-type: application/json" -d '{"text": "Hello World!"}'
-
-
-
 
 
 (define (oauth1-post-tweet  text reply-id media-id)
@@ -238,6 +181,7 @@
 	 (dummy (if (string=? media-id "") #f (oauth-request-add-param tweet-request 'media_ids media-id) ))
 	 (dummy (oauth1-request-sign tweet-request credentials oauth1-response #:signature oauth1-signature-hmac-sha1)))
     (oauth1-http-request tweet-request #:body #f #:extra-headers '())))
+
 
 
 (define (oauth1-post-tweet-recurse lst reply-id media-id counter)
@@ -264,35 +208,196 @@
 	       (set! counter (+ counter 1))
 	     (oauth1-post-tweet-recurse  (cdr lst) (assoc-ref  (json-string->scm (utf8->string body)) "id_str")  "" counter))			
 	      ))  ))
-       
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;July 2024 post Elon twiiter v2 api
+;;https://developer.x.com/en/docs/authentication/oauth-2-0/user-access-token   PKCE instructions
+
+;;step3
+;;see guile-oauth/oauth/oauth2/client.scm
+;; curl --location --request POST 'https://api.twitter.com/2/oauth2/token'
+;; --header 'Content-Type: application/x-www-form-urlencoded'
+;; --data-urlencode 'code=" authorization-code "'
+;; --data-urlencode 'grant_type=authorization_code'
+;; --data-urlencode 'token_type_hint=access_token'
+;; --data-urlencode 'client_id=" *client-id* "'
+;; --data-urlencode 'redirect_uri=" *redirecturi* "'
+;; --data-urlencode 'code_verifier=abcdefgh'
+
+;;https://api.x.com/oauth/authenticate?oauth_token=UvaijAAAAAABhb0tAAABkFlLYAs
+(define (init-get-access-token authorization-code clid ruri datadir)
+   ;;authorization-code from https://twitter.com/i/oauth2/authorize
+  (let* ((uri "https://api.twitter.com/2/oauth2/token")
+	 (qrylst-pre `(("grant_type" "authorization_code")
+		       ("client_id" ,clid)
+		       ("code" ,authorization-code)
+		       ("code_verifier" "abcdefgh")
+		       ("grant_type" "authorization_code")
+		       ("redirect_uri" ,ruri)
+		       ("token_type_hint" "access_token")
+		       ))
+	 ;;(_ (pretty-print qrylst-pre))
+	 (qrylst (lst-to-query-string qrylst-pre "?"))
+	 (body     (receive (response body)
+      			   (http-request (string-append uri qrylst)
+					 #:method 'POST
+					 #:headers '((Content-Type . "x-www-form-urlencoded"))
+			   #:body #f)
+		     (utf8->string body)))
+	 (alst (json-string->scm body))
+	 (expires-in  (assoc-ref alst "expires_in"))
+	 (expired (get-expired expires-in))
+	 (lst2 (acons "expired" expired alst))
+	 )
+    (begin
+       (if (access?  (string-append datadir "/oauth1_access_token_envs") F_OK) (delete-file (string-append datadir "/oauth1_access_token_envs")))
+       (encrypt-alist lst2 (string-append datadir "/oauth1_access_token_envs")))))
+
+(define (refresh-access-token refresh-token data-dir)
+  (let* ((uri "https://api.twitter.com/2/oauth2/token")
+	 (qrylst-pre `(("refresh_token" ,refresh-token)
+		       ("client_id" ,*client-id*)
+		       ("grant_type" "refresh_token")
+		      ;; ("token_type_hint" "access_token")
+		       ))
+	  (qrylst (lst-to-query-string qrylst-pre "?"))	 
+	 (body     (receive (response body)
+      		       (http-request (string-append uri qrylst)
+				     #:method 'POST
+				     #:headers '((Content-Type . "x-www-form-urlencoded"))
+				     #:body #f)
+		     (utf8->string body)))
+	 (alst (json-string->scm body))
+;;	 (_ (pretty-print alst))
+	 (expires-in  (assoc-ref alst "expires_in"))
+	 (expired (get-expired expires-in))
+	 (lst2 (acons "expired" expired alst))
+	 )
+     (begin
+       (if (access?  (string-append data-dir "/oauth1_access_token_envs") F_OK) (delete-file (string-append data-dir "/oauth1_access_token_envs")))
+       (encrypt-alist lst2 (string-append data-dir "/oauth1_access_token_envs"))
+       (assoc-ref lst2 "access_token")
+       )))
+  
+
+(define (repeat-get-access-token data-dir)
+  ;;get the access token from access_token_envs
+  ;;if it expired, refresh access_token_envs then return new access token
+  (let* ( (_ (pretty-print (string-append "data-dir: " data-dir)))
+	
+	 (current-accessenvs (decrypt-alist (string-append data-dir "/oauth1_access_token_envs")))
+	 (_ (pretty-print "current-accessenvs: " ))
+	 (_ (pretty-print current-accessenvs))
+	 (refresh-token (assoc-ref current-accessenvs "refresh_token"))
+	 (is-expired? (if (<  (assoc-ref current-accessenvs "expired") (time-second (current-time))) #t #f))
+;;	 (_ (pretty-print  "is-expired?: "))
+;;	 (_ (pretty-print is-expired?))	 
+	 )
+    (if is-expired?
+	(refresh-access-token refresh-token data-dir)
+	(assoc-ref current-accessenvs "access_token"))
+    ))  
+;; curl -X POST https://api.twitter.com/2/tweets -H "Authorization: Bearer "1516431938848006149-ZmM56NXft0k4rieBIH3Aj8A5727ALH" -H "Content-type: application/json" -d '{"text": "Hello World!"}'
+
+;; (define (oauth2-post-tweet  text data-dir)
+;;   ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/authorizing-a-request
+;;   ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/creating-a-signature
+;;   (let* (
+;;  	 (uri  "https://api.twitter.com/2/tweets")
+;; 	 (access-token (repeat-get-access-token data-dir))
+;; 	(_ (pretty-print (string-append "access-token: " access-token))) 
+;; 	 (bearer (string-append "Bearer " access-token))
+;; 	 (data  (string-append "{\"text\":\"" text "\"}"))
+;;  	 (resp (receive (response body)
+;;       		   (http-request uri 
+;; 				 #:method 'POST
+;; 				 #:headers `((Content-Type . "application/json")					     
+;; 					     (authorization . ,(parse-header 'authorization bearer))
+;; 					     )
+;; 				 #:body data
+;; 				 )
+;; 		 (utf8->string body))
+;; 	       ))
+;;     resp))
+
+      
+;; curl --location --request POST 'https://api.twitter.com/2/oauth2/token' \
+;; --header 'Content-Type: application/x-www-form-urlencoded' \
+;; --data-urlencode 'code=VGNibzFWSWREZm01bjN1N3dicWlNUG1oa2xRRVNNdmVHelJGY2hPWGxNd2dxOjE2MjIxNjA4MjU4MjU6MToxOmFjOjE' \
+;; --data-urlencode 'grant_type=authorization_code' \
+;; --data-urlencode 'client_id=rG9n6402A3dbUJKzXTNX4oWHJ' \
+;; --data-urlencode 'redirect_uri=https://www.example.com' \
+;; --data-urlencode 'code_verifier=challenge'
+
+;;https://stackoverflow.com/questions/77725780/error-fetching-oauth-credentials-missing-required-parameter-code-verifier
+
+;;this worked!!
+(define (get-access-token-curl authorization-code)
+  ;;authorization-code from https://twitter.com/i/oauth2/authorize
+  (let*(;;(media-id (mast-post-image-curl i))
+;;	(media (if i (string-append "' --data-binary 'media_ids[]=" i ) ""))
+;;	(reply (if r (string-append "' --data-binary 'in_reply_to_id=" r ) ""))
+	(out-file (get-rand-file-name "f" "txt"))
+	(command (string-append "curl -o " out-file " --location --request POST 'https://api.twitter.com/2/oauth2/token' --header 'Content-Type: application/x-www-form-urlencoded' --data-urlencode 'code=" authorization-code "' --data-urlencode 'grant_type=authorization_code' --data-urlencode 'token_type_hint=access_token' --data-urlencode 'client_id=" *client-id* "' --data-urlencode 'redirect_uri=" *redirecturi* "' --data-urlencode 'code_verifier=abcdefgh'"))
+	(_ (pretty-print command))
+	(_ (system command))
+	(_ (sleep 1))
+	(p  (open-input-file out-file))
+	(lst  (json-string->scm (get-string-all p)))
+	(expires-in (assoc-ref lst "expires_in"))
+	(_ (delete-file out-file))
+	(expired (get-expired expires-in))
+	(lst2 (acons "expired" expired lst)))
+    (encrypt-alist lst2 (string-append *data-dir* "/oauth1_access_token_envs"))))
+
+
+(define (twurl-get-media-id pic-file-name)
+  (let* ((command (string-append "twurl -X POST -H upload.twitter.com /1.1/media/upload.json?media_category=TWEET_IMAGE -f " pic-file-name " -F media"))
+	 (js (call-command-with-output-to-string command))
+	 (lst  (json-string->scm js)))
+     (assoc-ref lst "media_id_string")))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+
+
 
 ;; guile -L /home/mbc/projects/babweb  -e '(babweb lib twitter)' -s /home/mbc/projects/babweb/babweb/lib/twitter.scm 
-(define (main args)
-  ;;arg1 is consumer_key
-  ;;arg2 is consumer_secret
-  ;;arg3 is customer id
-  (let* (
-	 ;; (token (oauth1-response-token (get-request-token (cadr args) (caddr args))))
-	 (_  (pretty-print (string-append "in twitt: " *oauth-consumer-key*)))
-	 (token (oauth1-response-token (get-request-token *oauth-consumer-key* *oauth-consumer-secret* )))
-	  (uri (string-append "https://api.twitter.com/oauth/authenticate?oauth_token=" token))
-	   (dummy (pretty-print uri))
-	   (dummy (activate-readline))
-	   (pin (readline "\nEnter pin: "))
-	 ;; (oauth1-response (get-access-token token pin))  ;;user-id and screenname are the customer
-	  (oauth1-response (get-access-token (cadr args) (caddr args)))  ;;user-id and screenname are the customer
-	  ;; (token (oauth1-response-token oauth1-response))
-	  ;; (secret (oauth1-response-token-secret oauth1-response))
-	  ;; (params (oauth1-response-params oauth1-response))
-	  ;; (a (car params))
-	  ;; (b (cadr params))
-	  ;; (lst `((token . ,token)(secret . ,secret) ,a ,b))
-	  ;; (p  (open-output-file  (string-append "./tokens/" (cadddr args) ".json")))
-	  )
+;; (define (main args)
+;;   ;;arg1 is consumer_key
+;;   ;;arg2 is consumer_secret
+;;   ;;arg3 is customer id
+;;   (let* (
+;; 	 ;; (token (oauth1-response-token (get-request-token (cadr args) (caddr args))))
+;; 	 (_  (pretty-print (string-append "in twitt: " *oauth-consumer-key*)))
+;; 	 (token (oauth1-response-token (get-request-token *oauth-consumer-key* *oauth-consumer-secret* )))
+;; 	  (uri (string-append "https://api.twitter.com/oauth/authenticate?oauth_token=" token))
+;; 	   (dummy (pretty-print uri))
+;; 	   (dummy (activate-readline))
+;; 	   (pin (readline "\nEnter pin: "))
+;; 	 ;; (oauth1-response (get-access-token token pin))  ;;user-id and screenname are the customer
+;; 	;;  (oauth1-response (get-access-token (cadr args) (caddr args)))  ;;user-id and screenname are the customer
+;; 	  ;; (token (oauth1-response-token oauth1-response))
+;; 	  ;; (secret (oauth1-response-token-secret oauth1-response))
+;; 	  ;; (params (oauth1-response-params oauth1-response))
+;; 	  ;; (a (car params))
+;; 	  ;; (b (cadr params))
+;; 	  ;; (lst `((token . ,token)(secret . ,secret) ,a ,b))
+;; 	  ;; (p  (open-output-file  (string-append "./tokens/" (cadddr args) ".json")))
+;; 	  )
     
-;;         (scm->json lst p)
+;; ;;         (scm->json lst p)
 	  
     
-    (pretty-print oauth1-response)
-    ) )
+;;     (pretty-print oauth1-response)
+;;     ) )
 

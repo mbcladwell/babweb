@@ -23,8 +23,12 @@
 	  *client-secret*
 	  *tweet-length*
 	  *working-dir*
+	  *data-dir*
+	  *redirecturi*
+	  *platform*
+	  *gpg-key*
 	  convert-to-encrypted
-	  main
+;;	  main
 	  ))
 
 ;;working-dir determined by starting dir
@@ -38,6 +42,11 @@
 (define *client-secret* #f)
 (define *working-dir* (getcwd))
 (define *tweet-length* #f)
+(define *redirecturi* #f)
+(define *data-dir* #f)
+(define *platform* #f)
+(define *gpg-key* "babweb@build-a-bot.biz")
+
 
 ;;(define (get-envs)
   ;; (let*  ((varlst (if (access?  "./env.txt" R_OK)
@@ -58,9 +67,11 @@
 			    (b (json-string->scm  a))
 			    (_ (delete-file out-file)))
 		       b)
-		      '(("tweet-length" . "0")("client-secret"  .  "null")
+		      '(("tweet-length" . "0")("client-secret"  .  "null")("data-dir"  .  "null")
 			("client-id"  .  "null")("oauth-token-secret"  .  "null")("oauth-access-token"  .  "null")
-			("bearer-token"  .  "null")("oauth-consumer-secret"  .  "null")("oauth-consumer-key"  .  "null")))    ))    
+			("bearer-token"  .  "null")("oauth-consumer-secret"  .  "null")("oauth-consumer-key"  .  "null")
+			("redirecturi"  .  "null")("platform"  .  "null")("gpg-key"  .  "null"))
+		      )    ))    
     (begin
       (set! *oauth-consumer-key* (assoc-ref varlst "oauth-consumer-key"))
       (set! *oauth-consumer-secret* (assoc-ref varlst "oauth-consumer-secret"))
@@ -69,6 +80,9 @@
       (set! *oauth-token-secret* (assoc-ref varlst "oauth-token-secret"))
       (set! *client-id* (assoc-ref varlst "client-id"))
       (set! *client-secret* (assoc-ref varlst "client-secret"))
+      (set! *redirecturi* (assoc-ref varlst "redirecturi"))
+      (set! *platform* (assoc-ref varlst "platform"))
+      (set! *data-dir* (assoc-ref varlst "data-dir"))
       (set! *tweet-length* (if (assoc-ref varlst "tweet-length")			    
 			       (string->number (assoc-ref varlst "tweet-length"))
 			       #f))
@@ -104,7 +118,7 @@
 (define (main args)
   (let* ((fin (cadr args))
 	 (p  (open-input-file fin))
-	 (command (string-append "gpg --output envs --encrypt --recipient babweb@build-a-bot.biz " fin))
+	 (command (string-append "gpg --output envs --encrypt --recipient " *gpg-key* " " fin))
 	 (_ (system command))
 	 )
     (close-port p)

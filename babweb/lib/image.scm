@@ -39,6 +39,7 @@
 ;;#:use-module (ebbot)
 
 #:export (upload-image
+	  oauth1-upload-media-init
 	  get-image))
 
 ;; (define *oauth-consumer-key* "sHbODSbXeHaV6lV3HvGVRRmfD")
@@ -128,8 +129,10 @@
   ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/creating-a-signature
   (let* (
 	 (size-in-bytes (number->string (stat:size (stat file-name))))
-	 (oauth1-response (make-oauth1-response *oauth-access-token* *oauth-token-secret* '(("user_id" . "1516431938848006149") ("screen_name" . "eddiebbot")))) ;;these credentials do not change
-	 ;;(dummy (pretty-print (string-append "*oauth-access-token*: " *oauth-access-token*)))
+;;	 (oauth1-response (make-oauth1-response *oauth-access-token* *oauth-token-secret* '(("user_id" . "1516431938848006149") ("screen_name" . "eddiebbot")))) ;;these credentials do not change
+	 (oauth1-response (make-oauth1-response *oauth-access-token* *oauth-token-secret* '(("user_id" . "856105513800609792") ("screen_name" . "mbcladwell")))) ;;these credentials do not change
+	 (_ (pretty-print size-in-bytes))
+	 (dummy (pretty-print (string-append "*oauth-access-token*: " *oauth-access-token*)))
 	 (suffix (cadr (string-split file-name #\.)))
 	 (media-type (string-append "image/" suffix))
 	 (credentials (make-oauth1-credentials *oauth-consumer-key* *oauth-consumer-secret*))
@@ -144,12 +147,14 @@
 							    (command . "INIT")
 							  (total_bytes . ,size-in-bytes)
 							  (media_type . ,media-type)						 
+							  (media_category . "TWEET_IMAGE")						 
 							   )))
 	 (dummy (oauth1-request-sign tweet-request credentials oauth1-response #:signature oauth1-signature-hmac-sha1))
 	 )
        (receive (response body)	       
 	  (oauth2-http-request tweet-request #:body #f )
-	 (assoc-ref  (json-string->scm (utf8->string body)) "media_id_string")) ))
+	   (json-string->scm (utf8->string body)))) )
+;;	 (assoc-ref  (json-string->scm (utf8->string body)) "media_id_string")) ))
 
 
 (define (oauth1-upload-media-append media-id media counter)
