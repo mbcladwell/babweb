@@ -98,17 +98,14 @@
 ;;     (oauth2-http-request tweet-request #:body data )))
 
 (define (oauth2-post-tweet  text media-id reply-id data-dir)
-  ;;  (oauth2-post-tweet  "hello world" #f *data-dir*)
+  ;;  (oauth2-post-tweet  "hello world" #f #f *data-dir*)
   ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/authorizing-a-request
   ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/creating-a-signature
   ;;https://mail.gnu.org/archive/html/guile-user/2017-07/msg00067.html   talks about application/json
   (let* (
 	 (uri  "https://api.twitter.com/2/tweets")
-	 
 	 (access-token (repeat-get-access-token data-dir))
-	(_ (pretty-print (string-append "access-token: " access-token))) 
 	(bearer (string-append "Bearer " access-token))
-	;;(scm->json-string '(("text" . "Hello World!") ("media" . #("12345"))))
 	(lst `(("text". ,text)))
 	(lst (if media-id
 		 (reverse (acons "media" (vector media-id) lst))
@@ -116,16 +113,13 @@
 	(lst (if reply-id
 		 (reverse (acons "reply" `(("in_reply_to_tweet_id" .  ,reply-id)) lst))
 		 lst))
-	(data (scm->json-string lst))
- 	 (resp (receive (response body)
-      		   (http-request uri 
-				 #:method 'POST
-				 #:headers `((content-type . (application/json))					     
-					     (authorization . ,(parse-header 'authorization bearer)))
-				 #:body data )
-		 (utf8->string body))
-	       ))
-    resp))
+	(data (scm->json-string lst)))
+    (http-request uri 
+		  #:method 'POST
+		  #:headers `((content-type . (application/json))					     
+			      (authorization . ,(parse-header 'authorization bearer)))
+		  #:body data )))
+
 
 (define (oauth2-post-tweet-recurse lst reply-id media-id data-dir counter)
   ;;list of tweets to post
@@ -143,13 +137,12 @@
 	      ;; (pretty-print media-id)
 	      ;; (pretty-print counter)
 
-	     (oauth2-post-tweet-recurse  (cdr lst) media-id (assoc-ref  (json-string->scm (utf8->string body)) "id_str") data-dir  counter))			
-	     )
+	      (oauth2-post-tweet-recurse  (cdr lst) (assoc-ref  (json-string->scm (utf8->string body)) "id_str")  media-id data-dir  counter)))
 	  (begin
 	    (receive (response body)	  
 		(oauth2-post-tweet (car lst) media-id reply-id data-dir )
 	       (set! counter (+ counter 1))
-	     (oauth2-post-tweet-recurse  (cdr lst) media-id (assoc-ref  (json-string->scm (utf8->string body)) "id_str") data-dir counter))))))
+	     (oauth2-post-tweet-recurse  (cdr lst) (assoc-ref  (json-string->scm (utf8->string body)) "id_str")  media-id data-dir counter))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;guix shell -m manifest.scm guile -- guile ./twit-post-tweet.scm
@@ -159,21 +152,30 @@
 (define (main args)
   (let* ((start-time (current-time time-monotonic))
 	;; (_ (pretty-print (cadr args)))
+	  (counter (get-counter))
+	  (all-excerpts (get-all-excerpts-alist))
+	  (max-id (assoc-ref (car all-excerpts) "id"))
+	  (new-counter (if (= counter max-id) 0 (+ counter 1)))
+          (entity (find-by-id all-excerpts new-counter))	 
+	  (tweets (chunk-a-tweet (assoc-ref entity "content") *tweet-length*))
+	  (hashtags (get-all-hashtags-string))
+
+	  (media-directive (assoc-ref entity "image"))
+	  (image-file (if (string=? media-directive "none") #f (get-image-file-name media-directive)))
+	  (media-id (if image-file (mast-post-image-curl image-file) #f))
+	  (_ (set-counter new-counter))
+	 
+
+
 	 (stop-time (current-time time-monotonic))
-	 (_  (pretty-print (string-append "in twitt: " *oauth-consumer-key*)))
-;;	 (_ (get-access-token))
 	 (elapsed-time (ceiling (time-second (time-difference stop-time start-time))))
 	 )
     (begin
       (pretty-print (string-append "Shutting down after " (number->string elapsed-time) " seconds of use."))
-
-      ;;     (test-twurl-concat)
-
+    (mast-post-toot-curl-recurse tweets #f media-id 0 hashtags)
       ;;provide clickable url to get pin and authorization code; redirects to oauth2step2, writes access code
-;;      (twitt-oauth2-authorize)
-
-      
-     (pretty-print (oauth2-post-tweet "qqq" "/home/mbc/projects/babdata/bernays"))
+;;      (twitt-oauth2-authorize) 
+   ;;  (pretty-print (oauth2-post-tweet "qqq" "/home/mbc/projects/babdata/bernays"))
       )))
 
 
@@ -181,26 +183,3 @@
 
 	
 
-	 ;;(scm->json-string '(("text" . "Hello World!") ("media" . #("12345"))))
-	 
-
-{"text": "Excited!", "reply": {"in_reply_to_tweet_id": "1455953449422516226"}}
-
-(scm->json-string '(("text" . "Excited!") ("reply" . (("in_reply_to_tweet_id" . "12345")))))
-
-(scm->json-string '(("reply" . (("in_reply_to_tweet_id" . "12345")))))
-
-
-(let* ((text "Hello World!")
-       (media-id #f)
-       (reply-id "56789")
-       (lst `(("text". ,text)))
-       (lst (if media-id
-		(reverse (acons "media" (vector media-id) lst))
-		lst))
-       (lst (if reply-id
-		(reverse (acons "reply" `(("in_reply_to_tweet_id" .  ,reply-id)) lst))
-		lst))
-       
-       )
-  (scm->json-string lst))

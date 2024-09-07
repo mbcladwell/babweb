@@ -40,7 +40,7 @@
 
 (defun load-and-run-fave-file()
   (interactive)
-   (find-file "~/projects/babweb/babweb/test/sigtest.scm")
+   (find-file "~/projects/babweb/babweb/test/run.scm")
  ;; (find-file "~/projects/bookmunger/bookmunger.scm")
   (sesman-start)
   )

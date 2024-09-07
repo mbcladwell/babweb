@@ -1,0 +1,134 @@
+(use-modules (ice-9 pretty-print)
+	     (ice-9 binary-ports)
+	     (json)
+	     (gcrypt base64)(gcrypt hmac)
+	     (oauth oauth1)(oauth oauth1 client) (oauth oauth1 utils) (oauth oauth1 credentials) (oauth oauth1 signature)
+	     (oauth oauth2)(oauth oauth2 request)(oauth oauth2 response)	     	     
+	     (oauth utils)(oauth request)	     
+	     (rnrs bytevectors)
+	     (babweb lib env)(babweb lib image) (babweb lib utilities)(babweb lib twitter)
+	     (web client) (web response)(web request) (web uri)(web http)
+	     (srfi srfi-19) ;; date time
+	     (srfi srfi-1)  ;;list searching; delete-duplicates in list 
+	     (srfi srfi-9)  ;;records
+	     (ice-9 rdelim)
+	     (ice-9 i18n)   ;; internationalization
+	     (ice-9 popen)
+	     (ice-9 regex) ;;list-matches
+	     (ice-9 receive)	     
+	     (ice-9 string-fun)  ;;string-replace-substring
+	     (ice-9 pretty-print)
+	     (ice-9 textual-ports)
+;;	     
+	     )
+
+;;#!/home/mbc/.guix-profile/bin/guile -e main -s
+;;!#
+
+
+(define (oauth2-post-tweet  text media-id reply-id data-dir)
+  ;;  (oauth2-post-tweet  "hello world" #f #f *data-dir*)
+  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/authorizing-a-request
+  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/creating-a-signature
+  ;;https://mail.gnu.org/archive/html/guile-user/2017-07/msg00067.html talks about application/json
+  (let* (
+	 (uri  "https://api.twitter.com/2/tweets")
+	 (access-token (repeat-get-access-token data-dir))
+	(bearer (string-append "Bearer " access-token))
+	(lst `(("text". ,text)))
+	(lst (if media-id
+		 (let* ((m (acons "media_ids" (vector media-id) '())))
+		   (reverse  (acons "media" m lst)))
+		 lst))
+	(lst (if reply-id (reverse (acons "reply" `(("in_reply_to_tweet_id" .  ,reply-id)) lst)) lst))
+	(data (scm->json-string lst))
+	)
+    (http-request uri 
+		  #:method 'POST
+		  #:headers `((content-type . (application/json))					     
+			      (authorization . ,(parse-header 'authorization bearer)))
+		  #:body data )))
+
+
+(define (oauth2-post-tweet-recurse lst reply-id media-id data-dir counter)
+  ;;list of tweets to post
+  ;;reply-id initially #f
+  ;;counter initially 0; counter is needed to identify reply-id in first round and use media-id if exists
+  (if (null? (cdr lst))
+      (begin
+      (pretty-print (string-append "cdr lst is null i.e. the last tweet " ))
+      (oauth2-post-tweet (car lst) #f reply-id data-dir ))
+      
+      (if (eqv? counter 0)
+	  (let* ((_ (pretty-print (string-append "counter is 0 i.e. the first tweet " )))
+		 (body (receive (response body)	  
+			   (oauth2-post-tweet (car lst) media-id reply-id data-dir)
+			 body))
+		 (_  (set! counter (+ counter 1)))
+		 (_ (pretty-print (cdr lst)))
+		 (_ (pretty-print  (utf8->string body)))
+		 (_ (pretty-print (assoc-ref  (json-string->scm (utf8->string body)) "id_str")))
+		 (_ (pretty-print media-id))
+		 (_ (pretty-print counter)))
+	    (oauth2-post-tweet-recurse  (cdr lst) (assoc-ref  (json-string->scm (utf8->string body)) "id_str")  media-id data-dir  counter))
+	  (begin
+	    (pretty-print (string-append "counter is > 0 i.e. tweet 2 or more " ))
+	    (receive (response body)	  
+		(oauth2-post-tweet (car lst) #f reply-id data-dir )
+	      (set! counter (+ counter 1))
+	   ;; (pretty-print (string-append "body: " (utf8->string body)))
+	   ;; (pretty-print (string-append "response: "))
+	      (pretty-print response)
+	     (oauth2-post-tweet-recurse  (cdr lst) (assoc-ref  (json-string->scm (utf8->string body)) "id_str")  media-id data-dir counter))))))
+
+
+;;  /home/mbc/.guix-profile/bin/guile -L . -L /home/mbc/projects/guile-oauth -L /home/mbc/projects/babweb -e main ./run.scm /home/mbc/projects/babdata/bernays
+
+;;in data dir 
+;;  /home/mbc/.guix-profile/bin/guile -L . -L /home/mbc/projects/guile-oauth -L /home/mbc/projects/babweb -e main /home/mbc/projects/babweb/babweb/test/run.scm
+
+
+(define (main args)
+  (let* ((start-time (current-time time-monotonic))
+	 ;; (_ (pretty-print (cadr args)))
+;;	 (_ (set! *data-dir* (cadr args)))
+	 (_ (pretty-print (string-append "*data-dir*: " *data-dir*)))
+	 (counter (get-counter))  ;;note this is the tweet counter
+	 (all-excerpts (get-all-excerpts-alist))
+	 (max-id (assoc-ref (car all-excerpts) "id"))
+	 (new-counter (if (= counter max-id) 0 (+ counter 1)))
+	 (entity (find-by-id all-excerpts new-counter))	 
+	 (tweets (chunk-a-tweet (assoc-ref entity "content") *tweet-length*))
+	 (_ (pretty-print (string-append "tweets: " )))
+	 (_ (pretty-print tweets))
+	 
+	  (hashtags (get-all-hashtags-string))
+ (_ (pretty-print (string-append "hashtags: " )))
+	 (_ (pretty-print hashtags))
+	
+	  (media-directive (assoc-ref entity "image"))
+	  (image-file (if (string=? media-directive "none") #f (get-image-file-name media-directive)))
+	  (media-id (if image-file (twurl-get-media-id image-file) #f))
+	 (_ (pretty-print (string-append "media-id: " media-id)))
+	  (_ (set-counter new-counter))
+	 
+
+
+	 (stop-time (current-time time-monotonic))
+	 (elapsed-time (ceiling (time-second (time-difference stop-time start-time))))
+	 )
+    (begin
+      (oauth2-post-tweet-recurse tweets #f media-id *data-dir* 0)
+      (pretty-print (string-append "Shutting down after " (number->string elapsed-time) " seconds of use."))
+      ;;provide clickable url to get pin and authorization code; redirects to oauth2step2, writes access code
+;;      (twitt-oauth2-authorize) 
+   ;;  (pretty-print (oauth2-post-tweet "qqq" "/home/mbc/projects/babdata/bernays"))
+      )))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+

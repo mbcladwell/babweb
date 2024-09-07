@@ -285,12 +285,11 @@
 (define (repeat-get-access-token data-dir)
   ;;get the access token from access_token_envs
   ;;if it expired, refresh access_token_envs then return new access token
-  (let* (
-	 ;;(_ (pretty-print (string-append "data-dir: " data-dir)))
+  (let* ( (_ (pretty-print (string-append "data-dir: " data-dir)))
 	
 	 (current-accessenvs (decrypt-alist (string-append data-dir "/oauth1_access_token_envs")))
-;;	 (_ (pretty-print "current-accessenvs: " ))
-;;	 (_ (pretty-print current-accessenvs))
+	 (_ (pretty-print "current-accessenvs: " ))
+	 (_ (pretty-print current-accessenvs))
 	 (refresh-token (assoc-ref current-accessenvs "refresh_token"))
 	 (is-expired? (if (<  (assoc-ref current-accessenvs "expired") (time-second (current-time))) #t #f))
 ;;	 (_ (pretty-print  "is-expired?: "))
