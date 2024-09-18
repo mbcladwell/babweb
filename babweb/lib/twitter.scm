@@ -312,39 +312,21 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; guix shell -m manifest.scm -- guile -L /home/mbc/projects/babweb  -e '(babweb lib twitter)' -s /home/mbc/projects/babweb/babweb/lib/twitter.scm 
 
+(define (main args)
+  (let* ((counter (get-counter))
+	 (all-excerpts (get-all-excerpts-alist))
+	 (max-id (assoc-ref (car all-excerpts) "id"))
+	 (new-counter (if (= counter max-id) 0 (+ counter 1)))
+         (entity (find-by-id all-excerpts new-counter))
+	 (_ (pretty-print *tweet-length*))
+	 (tweets (chunk-a-tweet (assoc-ref entity "content") *tweet-length*))
+	 (hashtags (get-all-hashtags-string))
+	 (media-directive (assoc-ref entity "image"))
+	 (image-file (if (string=? media-directive "none") #f (get-image-file-name media-directive)))
+	 (media-id (if image-file  (twurl-get-media-id image-file) #f))
+	 (_ (set-counter new-counter)))
+    (oauth2-post-tweet-recurse tweets media-id #f *data-dir* hashtags 0)))
 
-
-
-
-
-;; guile -L /home/mbc/projects/babweb  -e '(babweb lib twitter)' -s /home/mbc/projects/babweb/babweb/lib/twitter.scm 
-;; (define (main args)
-;;   ;;arg1 is consumer_key
-;;   ;;arg2 is consumer_secret
-;;   ;;arg3 is customer id
-;;   (let* (
-;; 	 ;; (token (oauth1-response-token (get-request-token (cadr args) (caddr args))))
-;; 	 (_  (pretty-print (string-append "in twitt: " *oauth-consumer-key*)))
-;; 	 (token (oauth1-response-token (get-request-token *oauth-consumer-key* *oauth-consumer-secret* )))
-;; 	  (uri (string-append "https://api.twitter.com/oauth/authenticate?oauth_token=" token))
-;; 	   (dummy (pretty-print uri))
-;; 	   (dummy (activate-readline))
-;; 	   (pin (readline "\nEnter pin: "))
-;; 	 ;; (oauth1-response (get-access-token token pin))  ;;user-id and screenname are the customer
-;; 	;;  (oauth1-response (get-access-token (cadr args) (caddr args)))  ;;user-id and screenname are the customer
-;; 	  ;; (token (oauth1-response-token oauth1-response))
-;; 	  ;; (secret (oauth1-response-token-secret oauth1-response))
-;; 	  ;; (params (oauth1-response-params oauth1-response))
-;; 	  ;; (a (car params))
-;; 	  ;; (b (cadr params))
-;; 	  ;; (lst `((token . ,token)(secret . ,secret) ,a ,b))
-;; 	  ;; (p  (open-output-file  (string-append "./tokens/" (cadddr args) ".json")))
-;; 	  )
-    
-;; ;;         (scm->json lst p)
-	  
-    
-;;     (pretty-print oauth1-response)
-;;     ) )
 
