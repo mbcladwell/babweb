@@ -28,7 +28,7 @@
 	  *platform*
 	  *gpg-key*
 	  convert-to-encrypted
-;;	  main
+	  main
 	  ))
 
 ;;working-dir determined by starting dir

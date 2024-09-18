@@ -575,17 +575,20 @@
   (let* ((start-time (current-time time-monotonic))	 
 	 (stop-time (current-time time-monotonic))
 	 (_  (pretty-print (string-append "in twitt: " *oauth-consumer-key*)))
-	; (_ (get-access-token))
+	 (_ (get-access-token))
 	 
 	 (elapsed-time (ceiling (time-second (time-difference stop-time start-time))))
 	 )
     (begin
       (pretty-print (string-append "Shutting down after " (number->string elapsed-time) " seconds of use."))
-      (pretty-print (test-oauth1-simple-image-upload))
+;;      (pretty-print (test-oauth1-simple-image-upload))
 ;;     (test-twurl-concat)
 ;;(oauth2-post-tweet "qqq")
       )))
 
 (main)
 
+;; {"text": "Tweeting with media!", "media": {"media_ids": ["1455952740635586573"]}}
+;; (scm->json-string '(("text" . "eajsdkajksdebnces.")("media" . (("media_ids" . #("1832380895677857792"))))) )
+;; (scm->json-string '(("media_ids" . #("1832380895677857792"))))
 

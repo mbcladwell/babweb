@@ -33,9 +33,7 @@
  #:use-module (babweb lib image)
  #:use-module (babweb lib utilities)
  #:export (oauth2-post-tweet
-	   oauth1-post-tweet
 	   oauth2-post-tweet-recurse
-	   oauth1-post-tweet-recurse
 	   get-request-token
 	   init-get-access-token
 	   repeat-get-access-token
@@ -128,86 +126,8 @@
 
 
 
-(define (oauth2-post-tweet  text )
-  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/authorizing-a-request
-  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/creating-a-signature
-  (let* (
-	 (oauth1-response (make-oauth1-response *oauth-access-token* *oauth-token-secret* '(("user_id" . "1516431938848006149") ("screen_name" . "eddiebbot")))) ;;these credentials do not change
-	 (credentials (make-oauth1-credentials *oauth-consumer-key* *oauth-consumer-secret*))
-	 (data (string-append "{\"text\": \"" text "\"}"))
- 	 (uri  "https://api.twitter.com/2/tweets")
-	 (tweet-request (make-oauth-request uri 'POST '()))
-	 (dummy (oauth-request-add-params tweet-request `( 
-	  						  (oauth_consumer_key . ,*oauth-consumer-key*)
-							  (oauth_nonce . ,(oauth1-nonce))
-							  (oauth_timestamp . ,(oauth1-timestamp))
-							   (oauth_token . ,*oauth-access-token*)
-							   (oauth_version . "1.0")
-							   (response_type . "code")
-							   (client_id . ,*client-id*)
-							   
-							   )))
-	 (dummy (oauth1-request-sign tweet-request credentials oauth1-response #:signature oauth1-signature-hmac-sha1))
-	 (dummy (oauth-request-add-param tweet-request 'content-type "application/json"))
-	 (dummy (oauth-request-add-param tweet-request 'Authorization "Bearer"))
-	 (dummy (oauth-request-add-param tweet-request 'scope "tweet.read%20users.read%20follows.read%20follows.write"))
-	 
-	 )
-    (oauth2-http-request tweet-request #:body data )))
-
-;;(oauth1-http-request tweet-request #:body data #:extra-headers '((User-Agent . "v2CreateTweetRuby")(Content-type . "application/json")  ))))
-
-;; curl -X POST https://api.twitter.com/2/tweets -H "Authorization: Bearer "1516431938848006149-ZmM56NXft0k4rieBIH3Aj8A5727ALH" -H "Content-type: application/json" -d '{"text": "Hello World!"}'
 
 
-(define (oauth1-post-tweet  text reply-id media-id)
-  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/authorizing-a-request
-  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/creating-a-signature
-  (let* (
-	 (oauth1-response (make-oauth1-response *oauth-access-token* *oauth-token-secret* '(("user_id" . "1516431938848006149") ("screen_name" . "eddiebbot")))) ;;these credentials do not change
-	 (credentials (make-oauth1-credentials *oauth-consumer-key* *oauth-consumer-secret*))
- 	 (uri  "https://api.twitter.com/2/tweets")
-	 (tweet-request (make-oauth-request uri 'POST '()))
-	 ;;(_ (pretty-print *oauth-consumer-secret*))
-	 (dummy (oauth-request-add-params tweet-request `( 
-	  						   (oauth_consumer_key . ,*oauth-consumer-key*)
-							   (oauth_nonce . ,(get-nonce 20 ""))
-							   (oauth_timestamp . ,(oauth1-timestamp))
-							   (oauth_token . ,*oauth-access-token*)
-							   (oauth_version . "1.0")
-							   (status . ,text)
-							   ) ))
-	 (dummy (if (string=? reply-id "") #f (oauth-request-add-param tweet-request 'in_reply_to_status_id reply-id) ))
-	 (dummy (if (string=? media-id "") #f (oauth-request-add-param tweet-request 'media_ids media-id) ))
-	 (dummy (oauth1-request-sign tweet-request credentials oauth1-response #:signature oauth1-signature-hmac-sha1)))
-    (oauth1-http-request tweet-request #:body #f #:extra-headers '())))
-
-
-
-(define (oauth1-post-tweet-recurse lst reply-id media-id counter)
-  ;;list of tweets to post
-  ;;reply-id initially ""
-  ;;counter initially 0; counter is needed to identify reply-id in first round and use media-id if exists
-  (if (null? (cdr lst))
-      (oauth1-post-tweet (car lst) reply-id "")
-      (if (eqv? counter 0)
-	  (begin
-	    (receive (response body)	  
-		(oauth1-post-tweet (car lst) reply-id media-id)
-	      (set! counter (+ counter 1))
-	      ;; (pretty-print (cdr lst))
-	      ;; (pretty-print (assoc-ref  (json-string->scm (utf8->string body)) "id_str"))
-	      ;; (pretty-print media-id)
-	      ;; (pretty-print counter)
-
-	     (oauth1-post-tweet-recurse  (cdr lst) (assoc-ref  (json-string->scm (utf8->string body)) "id_str")  media-id counter))			
-	     )
-	  (begin
-	    (receive (response body)	  
-		(oauth1-post-tweet (car lst) reply-id "")
-	       (set! counter (+ counter 1))
-	     (oauth1-post-tweet-recurse  (cdr lst) (assoc-ref  (json-string->scm (utf8->string body)) "id_str")  "" counter))			
-	      ))  ))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -302,27 +222,6 @@
     ))  
 ;; curl -X POST https://api.twitter.com/2/tweets -H "Authorization: Bearer "1516431938848006149-ZmM56NXft0k4rieBIH3Aj8A5727ALH" -H "Content-type: application/json" -d '{"text": "Hello World!"}'
 
-;; (define (oauth2-post-tweet  text data-dir)
-;;   ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/authorizing-a-request
-;;   ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/creating-a-signature
-;;   (let* (
-;;  	 (uri  "https://api.twitter.com/2/tweets")
-;; 	 (access-token (repeat-get-access-token data-dir))
-;; 	(_ (pretty-print (string-append "access-token: " access-token))) 
-;; 	 (bearer (string-append "Bearer " access-token))
-;; 	 (data  (string-append "{\"text\":\"" text "\"}"))
-;;  	 (resp (receive (response body)
-;;       		   (http-request uri 
-;; 				 #:method 'POST
-;; 				 #:headers `((Content-Type . "application/json")					     
-;; 					     (authorization . ,(parse-header 'authorization bearer))
-;; 					     )
-;; 				 #:body data
-;; 				 )
-;; 		 (utf8->string body))
-;; 	       ))
-;;     resp))
-
       
 ;; curl --location --request POST 'https://api.twitter.com/2/oauth2/token' \
 ;; --header 'Content-Type: application/x-www-form-urlencoded' \
@@ -354,11 +253,58 @@
     (encrypt-alist lst2 (string-append *data-dir* "/oauth1_access_token_envs"))))
 
 
+;;must modify .twurlrc
 (define (twurl-get-media-id pic-file-name)
   (let* ((command (string-append "twurl -X POST -H upload.twitter.com /1.1/media/upload.json?media_category=TWEET_IMAGE -f " pic-file-name " -F media"))
 	 (js (call-command-with-output-to-string command))
 	 (lst  (json-string->scm js)))
      (assoc-ref lst "media_id_string")))
+
+
+(define (oauth2-post-tweet  text media-id reply-id data-dir)
+  ;;  (oauth2-post-tweet  "hello world" #f #f *data-dir*)
+  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/authorizing-a-request
+  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/creating-a-signature
+  ;;https://mail.gnu.org/archive/html/guile-user/2017-07/msg00067.html talks about application/json
+  (let* (
+	 (uri  "https://api.twitter.com/2/tweets")
+	 (access-token (repeat-get-access-token data-dir))
+	 (bearer (string-append "Bearer " access-token))
+	 (lst `(("text". ,text)))
+	 (lst (if media-id
+		  (let* ((m (acons "media_ids" (vector media-id) '())))
+		    (reverse  (acons "media" m lst)))
+		  lst))
+	 (lst (if reply-id (reverse (acons "reply" `(("in_reply_to_tweet_id" .  ,reply-id)) lst)) lst))
+	 (data (scm->json-string lst))
+	)
+    (http-request uri 
+		  #:method 'POST
+		  #:headers `((content-type . (application/json))					     
+			      (authorization . ,(parse-header 'authorization bearer)))
+		  #:body data )))
+
+(define (oauth2-post-tweet-recurse lst media-id reply-id data-dir hashtags counter)
+  ;;list of tweets to post
+  ;;reply-id initially #f
+  ;;counter initially 0; counter is needed to identify reply-id in first round and use media-id if exists
+  (if (null? (cdr lst))
+      (begin
+	(oauth2-post-tweet (string-append (car lst) " " hashtags) #f reply-id data-dir ))
+      (if (eqv? counter 0)
+	  (let* ((_ (pretty-print (string-append "counter is 0 i.e. the first tweet " )))
+		 (body (receive (response body)	  
+			   (oauth2-post-tweet (car lst) media-id reply-id data-dir)
+			 body))
+		 (_  (set! counter (+ counter 1))))
+	    (oauth2-post-tweet-recurse  (cdr lst)  media-id (assoc-ref (assoc-ref (json-string->scm (utf8->string body)) "data") "id") data-dir hashtags counter))
+	  (let* (
+		 (body 	(receive (response body)	  
+			    (oauth2-post-tweet (car lst) #f reply-id data-dir )
+			  body)))
+	    (begin
+	      (set! counter (+ counter 1))
+	     (oauth2-post-tweet-recurse  (cdr lst)  #f (assoc-ref (assoc-ref (json-string->scm (utf8->string body)) "data") "id")  data-dir hashtags counter))))))
 
 
 

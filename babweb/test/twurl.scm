@@ -1,3 +1,6 @@
+#! /home/mbc/.guix-profile/bin/guile \
+-e main -s
+!#
 
 ;;(add-to-load-path "/home/mbc/temp/test")
 (add-to-load-path "/home/mbc/projects/babweb")
@@ -51,8 +54,9 @@
 	     (babweb lib twitter)
 	    (rnrs bytevectors)
 	    (gcrypt hmac)
-	   	    (gcrypt base64)
-(ice-9 binary-ports)
+	    (gcrypt mac)
+	    (gcrypt base64)
+	    (ice-9 binary-ports)
 	     )
 
 (define-record-type <response-token>
@@ -70,6 +74,22 @@
                  (port->string uri)
                  (uri-path uri)))
 
+(define (libgcrypt->procedure return name params)
+  "Return a pointer to symbol FUNC in libgcrypt."
+  (catch #t
+    (lambda ()
+      (let ((ptr (dynamic-func name (dynamic-link %libgcrypt))))
+        ;; The #:return-errno? facility was introduced in Guile 2.0.12.
+        (pointer->procedure return ptr params
+                            #:return-errno? #t)))
+    (lambda args
+      (lambda _
+        (throw 'system-error name  "~A" (list (strerror ENOSYS))
+               (list ENOSYS))))))
+
+
+
+
 (define (standard-port? uri)
   (or (not (uri-port uri))
       (and (eq? 'http (uri-scheme uri))
@@ -82,7 +102,20 @@
       ""
       (string-append ":" (number->string (uri-port uri)))))
 
+(define (mac-open algorithm)
+  "Create a <mac> object set to use ALGORITHM"
+  (let* ((mac (bytevector->pointer (make-bytevector (sizeof '*))))
+         (err (%gcry-mac-open mac algorithm 0 %null-pointer)))
+    (if (= err 0)
+        (pointer->mac (dereference-pointer mac))
+        (throw 'gcry-error 'mac-open err))))
 
+
+(define %gcry-mac-open
+  (libgcrypt->procedure int "gcry_mac_open"
+                        ;; gcry_mac_hd_t *HD, int ALGO,
+                        ;; unsigned int FLAGS, gcry_ctx_t CTX
+                        `(* ,int ,unsigned-int *)))
 
 ;; Client credentials:
 
@@ -124,26 +157,6 @@
 
 
 
-(define (oauth2-post-tweet  text )
-  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/authorizing-a-request
-  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/creating-a-signature
-  (let* (
- 	 (uri  "https://api.twitter.com/2/tweets")
-	 (access-token "cWVacGlUSnJWRmt0UkZKTVAyNVRQZDRzOGh6dUtkUGswcWJ4U2FUQVRPaUh4OjE3MjE3MzI5NjAyNTA6MToxOmF0OjE")
-	 (bearer (string-append "Bearer " access-token))
-	 (data  "{\"text\":\"Hello World!\"}")
- 	 (resp (receive (response body)
-      		   (http-request uri 
-				 #:method 'POST
-				 #:headers `((Content-Type . "application/json")					     
-					     (authorization . ,(parse-header 'authorization bearer))
-					     )
-				 #:body "{\"text\":\"Hello World!qwertyuiop\"}"
-				 )
-		 (utf8->string body))
-	       )
-	 )
-    resp))
 
 (define (hmac-sha1-key client-secret token-secret)
   (string-append (uri-encode client-secret)
@@ -187,7 +200,6 @@
 
 
 (define (test-oauth1-simple-image-upload )
-;;(define (oauth1-post-tweet  text reply-id media-id)
   ;;https://developer.x.com/en/docs/twitter-api/v1/media/upload-media/api-reference/post-media-upload
   ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/authorizing-a-request
   ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/creating-a-signature
@@ -238,9 +250,13 @@
     ))
 
 (define (test-curl-concat)
-  (let* ((oauth1-response (make-oauth1-response *oauth-access-token* *oauth-token-secret* '(("user_id" . "856105513800609792") ("screen_name" . "mbcladwell")))) ;;these credentials do not change	
+  (let* (
+       ;;(oauth1-response (make-oauth1-response *oauth-access-token* *oauth-token-secret* '(("user_id" . "856105513800609792") ("screen_name" . "mbcladwell")))) ;;these credentials do not change
+	 
+       (oauth1-response (make-oauth1-response *oauth-access-token* *oauth-token-secret* '(("user_id" . "1516431938848006149") ("screen_name" . "eddiebbot"))))
+
 	 (credentials (make-oauth1-credentials *oauth-consumer-key* *oauth-consumer-secret*))
- 	 (uri  "https://upload.twitter.com/1.1/media/upload.json")
+ 	 (uri  "https://upload.twitter.com/1.1/media/upload.json?media_category=TWEET_IMAGE")
 	 (image-request (make-oauth-request uri 'POST '()))
 	 (file-name "/home/mbc/Pictures/scope.jpeg")
 	 (size-in-bytes (number->string (stat:size (stat file-name))))
@@ -254,10 +270,10 @@
 	 (_ (oauth-request-add-params image-request `( 
 							  (oauth_consumer_key . ,*oauth-consumer-key*)
 							  (oauth_nonce . ,nonce1)
-							  (oauth_signature_method . "HMAC-SHA1")
+							  ;;(oauth_signature_method . "HMAC-SHA1")
 							  (oauth_timestamp . ,timestamp)
 							  (oauth_token . ,*oauth-access-token*)
-							  (oauth_body_hash . ,body-hash)
+							 ;; (oauth_body_hash . ,body-hash)
 							 ;;  (Content-Type . "multipart/form-data")
 							  (oauth_version . "1.0")
 							 ;; (media . "@/home/mbc/Pictures/scope.jpeg")
@@ -294,23 +310,24 @@
 ;; <- "--00Twurl819416368259160374lruwT99\r\nContent-Disposition: form-data; name=\"media\"; filename=\"scope.jpeg\"\r\n
 ;; Content-Type: application/octet-stream\r\n\r\n\xFF\xD8\xFF\xE0\x00\x10JFIF\x00\x01\x01\x00\x00H\x00H\x00\x00\xFF\xDB\x00C\x00\x04\x04\x04\x04\x04\x04\a\x04\x04\a\n\a\a\a\n\r\n\n\n\n\r\x10\r\r\r\r\r\x10\x14\x10\x10\x10\x10\x10\x10\x14\x14\x14\x14\x14\x14\x14\x14\x18\x18\x18\x18\x18\x18\x1C\x1C\x1C\x1C\x1C\x1F\x1F\x1F\x1F\x1F\x1F\x1F\x1F\x1F\x1F\xFF\xDB\x00C\x01\x05\x05\x05\b\a\b\x0E\a\a\x0E \x16\x12\x16                                                  \xFF\xC2\x00\x11\b\x03\x80\x05@\x03\x01\"\x00\x02\x11\x01\x03\x11\x01\xFF\xC4\x00\x1C\x00\x00\x03\x01\x01\x01\x01\x01\x01\x00\x00\x00\x00\x00\x00\x00\x00\x01\x02\x03\x00\x04\x05\x06\a\b\xFF\xC4\x00\x1A\x01\x01\x
 	 
-	   (command (string-append "curl -X POST -H 'Authorization: OAuth oauth_body_hash=" body-hash ", oauth_consumer_key=" *oauth-consumer-key* ", oauth_nonce=" nonce1 ", oauth_signature=" sig ", oauth_signature_method=HMAC-SHA1, oauth_timestamp=" timestamp ", oauth_token=" *oauth-access-token* ", oauth_version=1.0' -H 'Content-Type: multipart/form-data' --data-binary 'media=/home/mbc/Pictures/scope.jpeg' https://upload.twitter.com/1.1/media/upload.json?media_category=TWEET_IMAGE")
-
-	 
+	   (command (string-append "curl -X POST -H 'Authorization: OAuth oauth_consumer_key=" *oauth-consumer-key* ", oauth_nonce=" nonce1 ", oauth_signature=" sig ", oauth_signature_method=HMAC-SHA1, oauth_timestamp=" timestamp ", oauth_token=" *oauth-access-token* ", oauth_version=1.0' -H 'Content-Type: multipart/form-data' --data-binary 'media=/home/mbc/Pictures/scope.jpeg' https://upload.twitter.com/1.1/media/upload.json?media_category=TWEET_IMAGE")
 		  
-		  ))
+		    ))
     (begin
-     ;; (receive (response body)
-(pretty-print 	  (system command))
+      ;; (receive (response body)
+      (pretty-print 	  (system command))
       ;;	(pretty-print (utf8->string body)))
       (pretty-print command)
-      
-
       )))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(define (main)
+;;guix shell -m manifest.scm guile -- ./twurl.scm
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define (main args)
   (let* ((start-time (current-time time-monotonic))	 
 	 (stop-time (current-time time-monotonic))
 	 (_  (pretty-print (string-append "in twitt: " *oauth-consumer-key*)))
@@ -320,8 +337,8 @@
     (begin
       (pretty-print (string-append "Shutting down after " (number->string elapsed-time) " seconds of use."))
 
-      (twurl-auth)
-;;(test-curl-concat)      
+     ;; (twurl-auth)
+      (test-curl-concat)      
        ;; (receive (response body)
        ;; 	   (test-oauth1-simple-image-upload)
        ;; 	(pretty-print (utf8->string body)))      
@@ -330,6 +347,5 @@
       ;;
       )))
 
-(main)
 
 

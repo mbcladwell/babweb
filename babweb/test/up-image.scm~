@@ -1,0 +1,116 @@
+(use-modules (web client)
+             (web response)
+             (web uri)
+             (web request)
+             (rnrs bytevectors)
+             (ice-9 binary-ports)
+             (ice-9 iconv)
+             (json))
+
+(define (upload-image-to-twitter image-path api-key api-secret-key access-token access-token-secret)
+  (let* ((url "https://upload.twitter.com/1.1/media/upload.json")
+         (boundary (string-append "------------------------" (number->string (current-time))))
+         (image-data (call-with-input-file image-path get-bytevector-all))
+         (image-filename (basename image-path))
+         (headers `((Authorization . ,(string-append "OAuth oauth_consumer_key=\"" api-key "\", "
+                                                     "oauth_nonce=\"" (number->string (random 1000000)) "\", "
+                                                     "oauth_signature=\"" (url-encode api-secret-key) "&" (url-encode access-token-secret) "\", "
+                                                     "oauth_signature_method=\"HMAC-SHA1\", "
+                                                     "oauth_timestamp=\"" (number->string (current-time)) "\", "
+                                                     "oauth_token=\"" access-token "\", "
+                                                     "oauth_version=\"1.0\""))
+                    (Content-Type . ,(string-append "multipart/form-data; boundary=" boundary))))
+         (body (string-append
+                "--" boundary "\r\n"
+                "Content-Disposition: form-data; name=\"media\"; filename=\"" image-filename "\"\r\n"
+                "Content-Type: application/octet-stream\r\n\r\n"
+                (bytevector->string image-data (make-transcoder (latin1-codec)))
+                "\r\n--" boundary "--\r\n")))
+    (let* ((response (http-post url #:headers headers #:body body))
+           (json-response (json-string->scm (bytevector->string (response-body response) (make-transcoder (utf8-codec))))))
+      (assoc-ref json-response "media_id_string"))))
+
+
+
+(define image-id (upload-image-to-twitter 
+                  "/path/to/your/image.jpg"
+                  "your-api-key"
+                  "your-api-secret-key"
+                  "your-access-token"
+                  "your-access-token-secret"))
+(display image-id)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(use-modules (web client)
+             (web response)
+             (web uri)
+             (web request)
+             (rnrs bytevectors)
+             (ice-9 binary-ports)
+             (ice-9 iconv)
+             (json)
+             (oauth)
+             (oauth request)
+             (oauth signature)
+             (srfi srfi-19)) ; for date-and-time
+
+(define (upload-image-to-twitter image-path consumer-key consumer-secret access-token access-token-secret)
+  (let* ((url "https://upload.twitter.com/1.1/media/upload.json")
+         (boundary (string-append "------------------------" (number->string (current-time))))
+         (image-data (call-with-input-file image-path get-bytevector-all))
+         (image-filename (basename image-path))
+         (oauth-params (make-oauth-params 
+                        consumer-key
+                        consumer-secret
+                        access-token
+                        access-token-secret))
+         (request-params `(("media" . ,image-filename)))
+         (oauth-header (oauth-header-string 
+                        "POST" 
+                        url 
+                        oauth-params 
+                        request-params))
+         (headers `((Authorization . ,oauth-header)
+                    (Content-Type . ,(string-append "multipart/form-data; boundary=" boundary))))
+         (body (string-append
+                "--" boundary "\r\n"
+                "Content-Disposition: form-data; name=\"media\"; filename=\"" image-filename "\"\r\n"
+                "Content-Type: application/octet-stream\r\n\r\n"
+                (bytevector->string image-data (make-transcoder (latin1-codec)))
+                "\r\n--" boundary "--\r\n")))
+    (let* ((response (http-post url #:headers headers #:body body))
+           (json-response (json-string->scm (bytevector->string (response-body response) (make-transcoder (utf8-codec))))))
+      (assoc-ref json-response "media_id_string"))))
+
+(define (make-oauth-params consumer-key consumer-secret access-token access-token-secret)
+  (let ((timestamp (date->string (current-date) "~s"))
+        (nonce (number->string (random 100000000))))
+    `((oauth_consumer_key . ,consumer-key)
+      (oauth_nonce . ,nonce)
+      (oauth_signature_method . "HMAC-SHA1")
+      (oauth_timestamp . ,timestamp)
+      (oauth_token . ,access-token)
+      (oauth_version . "1.0"))))
+
+(define (oauth-header-string method url oauth-params request-params)
+  (let* ((base-string (signature-base-string method url (append oauth-params request-params)))
+         (signing-key (string-append (uri-encode consumer-secret) "&" (uri-encode access-token-secret)))
+         (signature (hmac-sha1 signing-key base-string)))
+    (string-append
+     "OAuth "
+     (string-join
+      (map (lambda (param)
+             (string-append (uri-encode (symbol->string (car param)))
+                            "=\"" (uri-encode (cdr param)) "\""))
+           (append oauth-params `((oauth_signature . ,signature))))
+      ", "))))
+
+;; Example usage:
+;; (define image-id (upload-image-to-twitter 
+;;                   "/path/to/your/image.jpg"
+;;                   "your-consumer-key"
+;;                   "your-consumer-secret"
+;;                   "your-access-token"
+;;                   "your-access-token-secret"))
+;; (display image-id)

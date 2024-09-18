@@ -68,14 +68,14 @@
   ;;counter is the last tweeted id
   ;;start with (+ counter 1) for this session
   (let* (
-	 (p  (open-input-file (string-append *working-dir* "/last-posted.json")))
+	 (p  (open-input-file (string-append *data-dir* "/last-posted.json")))
 	 (a (json-string->scm (get-string-all p)))
 	 (dummy (close-port p))
 	 (b (assoc-ref a "last-posted-id")))
     b))
 
 (define (set-counter x)
-(let* ((p  (open-output-file (string-append *working-dir* "/last-posted.json")))
+(let* ((p  (open-output-file (string-append *data-dir* "/last-posted.json")))
 	 (a (scm->json-string `(("last-posted-id" . ,x))))
 	 (dummy (put-string p a)))
   (close-port p)))
@@ -135,7 +135,7 @@
   (get-tweet-chunks text '() size-mod ntweets 1) ))
 
 (define (get-all-excerpts-alist)
-  (let* ((p  (open-input-file (string-append *working-dir* "/db.json")))
+  (let* ((p  (open-input-file (string-append *data-dir* "/db.json")))
 	 (a (vector->list (json-string->scm (get-string-all p)))))	
      a))
 
@@ -150,7 +150,7 @@
 
 (define (get-all-hashtags-string)
   ;;hashtags stored with #
-  (let* ((p  (open-input-file (string-append *working-dir* "/hashtags.json")))
+  (let* ((p  (open-input-file (string-append *data-dir* "/hashtags.json")))
 	 (a (vector->list (assoc-ref (json-string->scm (get-string-all p)) "hashtags"))))	
      (string-join (add-hash-recurse a '()))))
 
@@ -173,8 +173,8 @@
 
 (define (get-image-file-name directive)
   (cond ((string=? directive "none") (#f))
-	((string=? directive "random")(string-append *working-dir* "/random/" (get-random-image (string-append *working-dir* "/random/"))) )	
-	(else (string-append *working-dir* "/specific/" directive))
+	((string=? directive "random")(string-append *data-dir* "/random/" (get-random-image (string-append *data-dir* "/random/"))) )	
+	(else (string-append *data-dir* "/specific/" directive))
      ))
 
 (define (get-expired expires-in)

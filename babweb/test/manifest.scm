@@ -4,4 +4,4 @@
         "guile-readline"
         "guile-oauth"
 	"guile-gcrypt"
-        "gnutls@3.7.7"))
+        "gnutls"))

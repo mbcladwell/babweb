@@ -41,6 +41,9 @@
 (defun load-and-run-fave-file()
   (interactive)
    (find-file "~/projects/babweb/babweb/test/run.scm")
+   (find-file "~/projects/babweb/babweb/test/test.scm")
+   (find-file "~/projects/babweb/babweb/test/twit-post-tweet.scm")
+
  ;; (find-file "~/projects/bookmunger/bookmunger.scm")
   (sesman-start)
   )
@@ -102,3 +105,5 @@
 
 (use-package dired-single
   :commands (dired dired-jump))
+
+(load-and-run-fave-file)

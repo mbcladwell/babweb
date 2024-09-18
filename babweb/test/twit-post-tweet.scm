@@ -65,87 +65,12 @@
 ;; --data-urlencode 'client_id=rG9n6402A3dbUJKzXTNX4oWHJ'
 
 
-;; (define (oauth2-post-tweet  text )
-;;   ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/authorizing-a-request
-;;   ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/creating-a-signature
-;;   (let* (
-;; 	 (oauth1-response (make-oauth1-response *oauth-access-token* *oauth-token-secret* '(("user_id" . "1516431938848006149") ("screen_name" . "eddiebbot")))) ;;these credentials do not change
-;; 	 (credentials (make-oauth1-credentials *oauth-consumer-key* *oauth-consumer-secret*))
-;; 	 (data (string-append "{\"text\": \"" text "\"}"))
-;;  	 (uri  "https://api.twitter.com/2/tweets")
-;; 	 (tweet-request (make-oauth-request uri 'POST '()))
-;; 	 (dummy (oauth-request-add-params tweet-request `( 
-;; 	  						  (oauth_consumer_key . ,*oauth-consumer-key*)
-;; 							 ; (oauth_consumer_secret . ,*oauth-consumer-secret*)
-;; 							 ; (oauth_token_secret .,*oauth-token-secret*)
-;; 							  (oauth_nonce . ,(oauth1-nonce))
-;; 							  (oauth_timestamp . ,(oauth1-timestamp))
-							
-;; 							   (oauth_token . ,*oauth-access-token*)
-;; 							   (oauth_version . "1.0")
-;; 							   (response_type . "code")
-;; 							   (client_id . ,*client-id*)
-							   
-;; 							  ; (Content-type . "application/json")
-;; 							  ; (json . ,data)
-;; 							   )))
-;; 	 (dummy (oauth1-request-sign tweet-request credentials oauth1-response #:signature oauth1-signature-hmac-sha1))
-;; 	 (dummy (oauth-request-add-param tweet-request 'content-type "application/json"))
-;; ;;	 (dummy (oauth-request-add-param tweet-request 'Authorization "Bearer"))
-;; 	 (dummy (oauth-request-add-param tweet-request 'scope "tweet.write"))
-	 
-;; 	 )
-;;     (oauth2-http-request tweet-request #:body data )))
-
-(define (oauth2-post-tweet  text media-id reply-id data-dir)
-  ;;  (oauth2-post-tweet  "hello world" #f #f *data-dir*)
-  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/authorizing-a-request
-  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/creating-a-signature
-  ;;https://mail.gnu.org/archive/html/guile-user/2017-07/msg00067.html   talks about application/json
-  (let* (
-	 (uri  "https://api.twitter.com/2/tweets")
-	 (access-token (repeat-get-access-token data-dir))
-	(bearer (string-append "Bearer " access-token))
-	(lst `(("text". ,text)))
-	(lst (if media-id
-		 (reverse (acons "media" (vector media-id) lst))
-		 lst))
-	(lst (if reply-id
-		 (reverse (acons "reply" `(("in_reply_to_tweet_id" .  ,reply-id)) lst))
-		 lst))
-	(data (scm->json-string lst)))
-    (http-request uri 
-		  #:method 'POST
-		  #:headers `((content-type . (application/json))					     
-			      (authorization . ,(parse-header 'authorization bearer)))
-		  #:body data )))
 
 
-(define (oauth2-post-tweet-recurse lst reply-id media-id data-dir counter)
-  ;;list of tweets to post
-  ;;reply-id initially #f
-  ;;counter initially 0; counter is needed to identify reply-id in first round and use media-id if exists
-  (if (null? (cdr lst))
-      (oauth2-post-tweet (car lst) #f #f data-dir )
-      (if (eqv? counter 0)
-	  (begin
-	    (receive (response body)	  
-		(oauth1-post-tweet (car lst) media-id reply-id data-dir)
-	      (set! counter (+ counter 1))
-	      ;; (pretty-print (cdr lst))
-	      ;; (pretty-print (assoc-ref  (json-string->scm (utf8->string body)) "id_str"))
-	      ;; (pretty-print media-id)
-	      ;; (pretty-print counter)
 
-	      (oauth2-post-tweet-recurse  (cdr lst) (assoc-ref  (json-string->scm (utf8->string body)) "id_str")  media-id data-dir  counter)))
-	  (begin
-	    (receive (response body)	  
-		(oauth2-post-tweet (car lst) media-id reply-id data-dir )
-	       (set! counter (+ counter 1))
-	     (oauth2-post-tweet-recurse  (cdr lst) (assoc-ref  (json-string->scm (utf8->string body)) "id_str")  media-id data-dir counter))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;guix shell -m manifest.scm guile -- guile ./twit-post-tweet.scm
+;;guix shell -m manifest.scm guile -- ./twit-post-tweet.scm
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -153,29 +78,36 @@
   (let* ((start-time (current-time time-monotonic))
 	;; (_ (pretty-print (cadr args)))
 	  (counter (get-counter))
-	  (all-excerpts (get-all-excerpts-alist))
-	  (max-id (assoc-ref (car all-excerpts) "id"))
-	  (new-counter (if (= counter max-id) 0 (+ counter 1)))
+	   (all-excerpts (get-all-excerpts-alist))
+	   (max-id (assoc-ref (car all-excerpts) "id"))
+	   (new-counter (if (= counter max-id) 0 (+ counter 1)))
           (entity (find-by-id all-excerpts new-counter))	 
 	  (tweets (chunk-a-tweet (assoc-ref entity "content") *tweet-length*))
-	  (hashtags (get-all-hashtags-string))
-
+	   (hashtags (get-all-hashtags-string))
 	  (media-directive (assoc-ref entity "image"))
-	  (image-file (if (string=? media-directive "none") #f (get-image-file-name media-directive)))
-	  (media-id (if image-file (mast-post-image-curl image-file) #f))
-	  (_ (set-counter new-counter))
+	   (image-file (if (string=? media-directive "none") #f (get-image-file-name media-directive)))
+	  ;; (_ (pretty-print "image-file:"))
+	  ;; (_ (pretty-print image-file))
+	  ;; (media-id (if image-file (mast-post-image-curl image-file) #f))
+	   (media-id (if image-file  (twurl-get-media-id image-file) #f))
+	  ;; (_ (pretty-print media-id))
+	  ;; (_ (pretty-print *data-dir*))
+	   
+	   (_ (set-counter new-counter))
 	 
 
 
-	 (stop-time (current-time time-monotonic))
-	 (elapsed-time (ceiling (time-second (time-difference stop-time start-time))))
-	 )
+	   (stop-time (current-time time-monotonic))
+	   (elapsed-time (ceiling (time-second (time-difference stop-time start-time))))
+	   )
     (begin
       (pretty-print (string-append "Shutting down after " (number->string elapsed-time) " seconds of use."))
-    (mast-post-toot-curl-recurse tweets #f media-id 0 hashtags)
+;;    (mast-post-toot-curl-recurse tweets #f media-id 0 hashtags)
       ;;provide clickable url to get pin and authorization code; redirects to oauth2step2, writes access code
-;;      (twitt-oauth2-authorize) 
-   ;;  (pretty-print (oauth2-post-tweet "qqq" "/home/mbc/projects/babdata/bernays"))
+      ;;      (twitt-oauth2-authorize)
+      (oauth2-post-tweet-recurse tweets media-id #f *data-dir* hashtags 0)
+;;      (pretty-print (oauth2-post-tweet "test tweet" "1834901647132065792" #f *data-dir*))
+;;     (pretty-print (oauth2-post-tweet "qqq" "/home/mbc/projects/babdata/ellul"))
       )))
 
 

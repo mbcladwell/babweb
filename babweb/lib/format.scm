@@ -61,7 +61,7 @@
 	new)
       (begin
 	(if (> (string-length (car old)) 2)
-	    (begin
+	    (begin	
 	      (set! new (cons `(,(cons "content" (clean-chars (car old))) ("image" . ,(cadr old))("id" . ,counter)) new))
 	      (set! counter (+ 1 counter))))
 	(process-quotes (cddr old) new counter ))
@@ -84,7 +84,7 @@
   (close-port p)))
 
 
-;;guile -L /home/mbc/projects/babweb -e '(babweb lib format)' -s /home/mbc/projects/babweb/babweb/lib/format.scm . destination.txt
+;;/gnu/store/pm4swxzzcz77li6xgsf9xl2rskk4228r-guile-next-3.0.9-0.3b76a30/bin/guile -L /home/mbc/projects/babweb -e '(babweb lib format)' -s /home/mbc/projects/babweb/babweb/lib/format.scm . destination.txt
 
 (define (main args)
   ;; args: '( "working-dir" "new-excerpts-file-name"  )
@@ -92,7 +92,6 @@
 	 (dummy (set! working-dir (cadr args)))
 	; (counter (get-counter))
 	 (all-new-quotes (get-all-new-quotes (string-append working-dir "/" (caddr args))))
-
 	 ;;used when appending
 	 ;(last-id (get-last-id))
 	;(start (if (= last-id 0) 0 (+ last-id 1)))  ;;record to start populating

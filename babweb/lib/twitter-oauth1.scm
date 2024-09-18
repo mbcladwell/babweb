@@ -163,40 +163,6 @@
 
 
 
-(define (oauth2-post-tweet  text )
-  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/authorizing-a-request
-  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/creating-a-signature
-  (let* (
-	 (oauth1-response (make-oauth1-response *oauth-access-token* *oauth-token-secret* '(("user_id" . "1516431938848006149") ("screen_name" . "eddiebbot")))) ;;these credentials do not change
-	 (credentials (make-oauth1-credentials *oauth-consumer-key* *oauth-consumer-secret*))
-	 (data (string-append "{\"text\": \"" text "\"}"))
- 	 (uri  "https://api.twitter.com/2/tweets")
-	 (tweet-request (make-oauth-request uri 'POST '()))
-	 (dummy (oauth-request-add-params tweet-request `( 
-	  						  (oauth_consumer_key . ,*oauth-consumer-key*)
-							 ; (oauth_consumer_secret . ,*oauth-consumer-secret*)
-							 ; (oauth_token_secret .,*oauth-token-secret*)
-							  (oauth_nonce . ,(get-nonce 20 ""))
-							  (oauth_timestamp . ,(oauth1-timestamp))
-							
-							   (oauth_token . ,*oauth-access-token*)
-							   (oauth_version . "1.0")
-							   
-							  ; (Content-type . "application/json")
-							  ; (json . ,data)
-							   )))
-	 (dummy (oauth1-request-sign tweet-request credentials oauth1-response #:signature oauth1-signature-hmac-sha1))
-	 (dummy (oauth-request-add-param tweet-request 'content-type "application/json"))
-	 (dummy (oauth-request-add-param tweet-request 'Authorization "Bearer"))
-	 (dummy (oauth-request-add-param tweet-request 'scope "tweet.write"))
-	 
-	 )
-(oauth2-http-request tweet-request #:body data )))
-;;(oauth1-http-request tweet-request #:body data #:extra-headers '((User-Agent . "v2CreateTweetRuby")(Content-type . "application/json")  ))))
-
-;; curl -X POST https://api.twitter.com/2/tweets -H "Authorization: Bearer "1516431938848006149-ZmM56NXft0k4rieBIH3Aj8A5727ALH" -H "Content-type: application/json" -d '{"text": "Hello World!"}'
-
-
 
 
 

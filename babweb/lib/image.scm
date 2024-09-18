@@ -235,7 +235,8 @@
 
 (define (oauth1-upload-media-status  id)
   (let* (
-	 (oauth1-response (make-oauth1-response *oauth-access-token* *oauth-token-secret* '(("user_id" . "1516431938848006149") ("screen_name" . "eddiebbot")))) ;;these credentials do not change	 
+;;	 (oauth1-response (make-oauth1-response *oauth-access-token* *oauth-token-secret* '(("user_id" . "1516431938848006149") ("screen_name" . "eddiebbot")))) ;;these credentials do not change	 
+	 (oauth1-response (make-oauth1-response *oauth-access-token* *oauth-token-secret* '(("user_id" . "856105513800609792") ("screen_name" . "mbcladwell")))) ;;these credentials do not change	 
 	 (credentials (make-oauth1-credentials *oauth-consumer-key* *oauth-consumer-secret*))
  	 (uri  "https://upload.twitter.com/1.1/media/upload.json")
 	 (tweet-request (make-oauth-request uri 'GET '()))
@@ -266,7 +267,7 @@
 
   (let* ((all-chunks (chunk-an-image img-file chunk-size ))
 	 (media-id (oauth1-upload-media-init  img-file))
-	 (_ (pretty-print (string-append "media-id: " media-id)))
+;;	 (_ (pretty-print (string-append "media-id: " media-id)))
 	 (dummy  (oauth1-upload-media-append-recurse  media-id all-chunks 0 ))
 	 (body  (receive (response body)		     
 		     (oauth1-upload-media-finalize media-id )
