@@ -1,0 +1,594 @@
+
+(add-to-load-path "/home/mbc/projects/babweb")
+(add-to-load-path "/home/mbc/projects/babweb/babweb")
+(add-to-load-path "/home/mbc/projects/guile-oauth")
+
+(use-modules (web client)
+	     (srfi srfi-19)   ;; date time
+	     (srfi srfi-1)  ;;list searching; delete-duplicates in list 
+	     (ice-9 pretty-print)
+	     (ice-9 regex) ;;list-matches
+	     (ice-9 string-fun)  ;;string-replace-substring	   
+	     (ice-9 textual-ports)
+	     (web client)
+	     (srfi srfi-19) ;; date time
+	     (srfi srfi-1)  ;;list searching; delete-duplicates in list 
+	     (srfi srfi-9)  ;;records
+	     (web response)
+	     (web request)
+	     (oop goops) ;; class-of
+	     (web uri)
+	     (web client)
+	     (web http)
+	     (ice-9 rdelim)
+	     (ice-9 i18n)   ;; internationalization
+	     (ice-9 popen)
+	     (ice-9 regex) ;;list-matches
+	     (ice-9 receive)	     
+	     (ice-9 string-fun)  ;;string-replace-substring
+	     (ice-9 pretty-print)
+	     (ice-9 readline)
+	     (json)
+	     (gcrypt base64)
+	     (oauth oauth1)
+	     (oauth oauth2)
+	     (oauth oauth2 request)
+	     (oauth oauth2 response)
+	     (oauth utils)
+	     (oauth request)
+	     (oauth oauth1 client)
+	     (oauth oauth1 utils)
+	     (oauth oauth1 credentials)
+	     (oauth oauth1 signature)
+	     (rnrs bytevectors)
+	     (ice-9 textual-ports)
+	     (babweb lib env)
+	     (babweb lib image)
+	     (babweb lib utilities)
+	     (babweb lib twitter)
+	    (rnrs bytevectors)
+	    (gcrypt hmac)
+	    (gcrypt base64)
+(ice-9 binary-ports)
+	     )
+
+(define-record-type <response-token>
+  (make-response-token token_type access_token)
+  response-token?
+  (token_type response-token-type)
+  (access_token response-token-access-token))
+
+(define oauth-response-token-record (make-response-token "bearer" *oauth-access-token* ))
+
+
+
+
+;; Client credentials:
+
+;;     App Key === API Key === Consumer API Key === Consumer Key === Customer Key === oauth_consumer_key
+;;     App Key Secret === API Secret Key === Consumer Secret === Consumer Key === Customer Key === oauth_consumer_secret
+;;     Callback URL === oauth_callback
+     
+
+;; Temporary credentials:
+
+;;     Request Token === oauth_token
+;;     Request Token Secret === oauth_token_secret
+;;     oauth_verifier
+     
+
+;; Token credentials:
+
+;;     Access token === Token === resulting oauth_token
+;;     Access token secret === Token Secret === resulting oauth_token_secret
+
+
+(define (get-request-token k s)
+;;(define (get-request-token )
+  ;; returns a response: #<<oauth1-response> token: "Ia2k4gAAAAABb11DAAABgJn1fzQ" secret: "Pi8PTBLsyuE7tsfB1X2anChF3WyP1R7e" params: ()>
+  ;; retrieve with  token: (oauth1-response-token a)
+  ;;                secret: (oauth1-response-token-secret a)
+  (let*( (uri "https://api.twitter.com/oauth/request_token")
+	 ;;(credentials (make-oauth1-credentials oauth-access-token oauth-token-secret))
+	 (credentials (make-oauth1-credentials k s))	 
+;;	 (credentials (make-oauth1-credentials *oauth-consumer-key* *oauth-consumer-secret*))	 
+	 (a  (oauth1-client-request-token uri credentials "oob"    ;;for pin
+;;	 (a  (oauth1-client-request-token uri credentials "http://build-a-bot.biz/twittreg2"
+					 #:method 'POST
+					 #:params '()
+					 #:signature oauth1-signature-hmac-sha1)))	
+  a))
+
+
+;; (define (get-pin rt)
+;; ;;rt is the request token provided by get-request-token
+;;   (let* ((uri (string-append "https://api.twitter.com/oauth/authenticate?oauth_token=" rt))
+;;          (out (receive (response body)
+;; 		   (oauth1-http-request verifier-request #:body #f #:extra-headers '((oauth_callback_confirmed . "true")))
+;; 		(oauth1-http-body->response response body))))
+;;     #f
+
+	 
+;;        ))
+  
+;;https://api.x.com/oauth/authenticate?oauth_token=UvaijAAAAAABhb0tAAABkFlLYAs
+(define (init-get-access-token authorization-code clid ruri datadir)
+   ;;authorization-code from https://twitter.com/i/oauth2/authorize
+  (let* ((uri "https://api.twitter.com/2/oauth2/token")
+	 (qrylst-pre `(("grant_type" "authorization_code")
+		       ("client_id" ,clid)
+		       ("code" ,authorization-code)
+		       ("code_verifier" "abcdefgh")
+		       ("grant_type" "authorization_code")
+		       ("redirect_uri" ,ruri)
+		       ("token_type_hint" "access_token")
+		       ))
+	 (_ (pretty-print qrylst-pre))
+	 (qrylst (lst-to-query-string qrylst-pre "?"))
+	 (body     (receive (response body)
+      			   (http-request (string-append uri qrylst)
+					 #:method 'POST
+					 #:headers '((Content-Type . "x-www-form-urlencoded"))
+			   #:body #f)
+		     (utf8->string body)))
+	 (alst (json-string->scm body))
+	 (expires-in  (assoc-ref alst "expires_in"))
+	 (expired (get-expired expires-in))
+	 (lst2 (acons "expired" expired alst))
+	 )
+    (begin
+       (if (access?  (string-append datadir "/oauth1_access_token_envs") F_OK) (delete-file (string-append datadir "/oauth1_access_token_envs")))
+       (encrypt-alist lst2 (string-append datadir "/oauth1_access_token_envs")))))
+  
+
+(define (get-access-token)
+  ;;oauth_token is the token from get-request-token
+  ;;oauth-verifier is the pin manually copied from the ____ page
+  ;;output is a 'response object' as with get-request-token
+  (let* ((request-token (oauth1-response-token (get-request-token *oauth-consumer-key* *oauth-consumer-secret* )))
+	 (uri (string-append "https://api.twitter.com/oauth/authenticate?oauth_token=" request-token))
+	 (_ (pretty-print uri))
+	 (_ (activate-readline))
+	 (pin (readline "\nEnter pin: "))
+	 ;; (oauth1-response (get-access-token token pin))  
+	;;  (oauth1-response (get-access-token (cadr args) (caddr args))) 
+	;; (oauth1-response (get-access-token request-token pin)) 
+	 (uri "https://api.twitter.com/oauth/access_token")
+	 (verifier-request (make-oauth-request uri 'POST '()))
+	  (dummy (oauth-request-add-params verifier-request `( (oauth_token . ,request-token)
+	  						       (oauth_verifier . ,pin)
+							      (oauth_callback_confirmed . "true")
+							       )))
+	                                                       
+;;	  (out (receive (response body)
+;;		   (oauth1-http-request verifier-request #:body #f #:extra-headers '((oauth_callback_confirmed . "true")))
+;;		   (oauth1-http-request verifier-request #:body #f )
+;;		 (oauth1-http-body->response response body)))
+;;	  (_ (pretty-print "end-of-get-access-token"))
+	  )    
+  ;;  out
+ (receive (response body)
+ 	   	   (oauth1-http-request verifier-request #:body #f #:extra-headers '((oauth_callback_confirmed . "true")))
+ 	  	 (pretty-print  body))
+    ))
+
+;#<<oauth1-response> token: "856105513800609792-ttQfcoxgrGJnwaLfjEdyagDjL9lfbTP" secret: "EfoSSaCHSnmfkhfU2r5oiU03cA6Kb6SLLAr7rxZO73Tfg" params: (("user_id" . "856105513800609792") ("screen_name" . "mbcladwell"))>
+
+
+;;                              key                                 secret                            custid
+;;guile -e main -s ./get-access-token.scm 2R103u4mp3iwy8MtjRY5LJXsw Cl5Jx2XRgYvo4GmXT7uZooq8jkXUiyYxwhCOVcd6RqF4LyMP0J eddibbot
+;;#<<oauth1-response> token: "856105513800609792-afMxtRwKgu6gmq2TH9ScCAFav5kH1FA" secret: "QhqicaaTpMAe8UYTb0kUO41WwROHav3lCqo132cXZNEVG" params: (("user_id" . "856105513800609792") ("screen_name" . "mbcladwell"))>
+
+
+;;(define (get-user-data oauth_tokenv oauth-verifierv)
+ ;;oauth_token is the token from get-request-token
+  ;;oauth-verifier is the pin manually copied from the ____ page
+  ;;output is a 'response object' as with get-request-token
+(define (get-user-data oauth-verifier access-token)
+  ;;access-token contains token, tokensecret
+  ;;what is oauthVerifier inTwittService? comes from https://api.twitter.com/oauth/authenticate
+  ;;so looks like the PIN
+  (let* ((tokenv (oauth1-response-token access-token))
+	 (secretv (oauth1-response-token-secret access-token))
+	 (user-data-request (make-oauth-request "https://api.twitter.com/1.1/account/verify_credentials.json" 'GET '()))
+	 (_ (oauth-request-add-params user-data-request `((oauth_consumer_key . ,*oauth-consumer-key*)
+							  (oauth_nonce . ,(get-nonce 42 ""))
+							  (oauth_timestamp . ,(oauth1-timestamp))
+							  (oauth_token . ,tokenv)
+							  (oauth_version . "1.0")					 
+							  )))
+	                                                       
+	  (out (receive (response body)
+		   (oauth1-http-request user-data-request #:body #f				
+					#:signature oauth1-signature-hmac-sha1
+					#:extra-headers '((access_token_secret . ,secretv)))
+		 (oauth1-http-body->response response body)))
+	  )    
+    out
+;; (receive (response body)
+;; 	   	   (oauth1-http-request verifier-request #:body #f #:extra-headers '((oauth_callback_confirmed . "true")))
+;; 	  	 (pretty-print (utf8->string body)))
+    ))
+
+
+
+
+;;(oauth1-http-request tweet-request #:body data #:extra-headers '((User-Agent . "v2CreateTweetRuby")(Content-type . "application/json")  ))))
+
+;; curl -X POST https://api.twitter.com/2/tweets -H 'Authorization: Bearer "1516431938848006149-ZmM56NXft0k4rieBIH3Aj8A5727ALH"' -H 'Content-type: application/json' -d '{"text":"Hello World!"}'
+
+
+
+
+
+(define (oauth1-post-tweet  text reply-id media-id)
+  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/authorizing-a-request
+  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/creating-a-signature
+  (let* (
+	 (oauth1-response (make-oauth1-response *oauth-access-token* *oauth-token-secret* '(("user_id" . "1516431938848006149") ("screen_name" . "eddiebbot")))) ;;these credentials do not change
+	 (credentials (make-oauth1-credentials *oauth-consumer-key* *oauth-consumer-secret*))
+ 	 (uri  "https://api.twitter.com/2/tweets")
+	 (tweet-request (make-oauth-request uri 'POST '()))
+	 ;;(_ (pretty-print *oauth-consumer-secret*))
+	 (dummy (oauth-request-add-params tweet-request `( 
+	  						   (oauth_consumer_key . ,*oauth-consumer-key*)
+							   (oauth_nonce . ,(get-nonce 20 ""))
+							   (oauth_timestamp . ,(oauth1-timestamp))
+							   (oauth_token . ,*oauth-access-token*)
+							   (oauth_version . "1.0")
+							   (status . ,text)
+							   ) ))
+	 (dummy (if (string=? reply-id "") #f (oauth-request-add-param tweet-request 'in_reply_to_status_id reply-id) ))
+	 (dummy (if (string=? media-id "") #f (oauth-request-add-param tweet-request 'media_ids media-id) ))
+	 (dummy (oauth1-request-sign tweet-request credentials oauth1-response #:signature oauth1-signature-hmac-sha1)))
+    (oauth1-http-request tweet-request #:body #f #:extra-headers '())))
+
+
+(define (oauth1-post-tweet-recurse lst reply-id media-id counter)
+  ;;list of tweets to post
+  ;;reply-id initially ""
+  ;;counter initially 0; counter is needed to identify reply-id in first round and use media-id if exists
+  (if (null? (cdr lst))
+      (oauth1-post-tweet (car lst) reply-id "")
+      (if (eqv? counter 0)
+	  (begin
+	    (receive (response body)	  
+		(oauth1-post-tweet (car lst) reply-id media-id)
+	      (set! counter (+ counter 1))
+	      ;; (pretty-print (cdr lst))
+	      ;; (pretty-print (assoc-ref  (json-string->scm (utf8->string body)) "id_str"))
+	      ;; (pretty-print media-id)
+	      ;; (pretty-print counter)
+
+	     (oauth1-post-tweet-recurse  (cdr lst) (assoc-ref  (json-string->scm (utf8->string body)) "id_str")  media-id counter))			
+	     )
+	  (begin
+	    (receive (response body)	  
+		(oauth1-post-tweet (car lst) reply-id "")
+	       (set! counter (+ counter 1))
+	     (oauth1-post-tweet-recurse  (cdr lst) (assoc-ref  (json-string->scm (utf8->string body)) "id_str")  "" counter))			
+	      ))  ))
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;Free account is app only OAUTH 2.0 with PKCE
+;;https://developer.x.com/en/docs/authentication/oauth-2-0/authorization-code
+
+(define callback-url "https://build-a-bot.biz/bab/callback1.php")
+(define basic-creds (base64-encode (string->utf8 (string-append *client-id* ":" *client-secret*))))
+
+;;basic-creds: V0ZvM2JVZDBaVFJYVFhOYVNuRTRNV1oxUjJVNk1UcGphUTpmZFM2ZUwwNEUxM3A4b1NTR0dtRWpzeXpFOE5naWkxWXZwaUJ4RWdNeUJVWl9DWGZnSw==
+
+;;https://developer.x.com/en/docs/authentication/oauth-2-0/user-access-token   PKCE instructions
+;;step 1  tweet.write%20offline.access
+
+;;step 2
+(define (twitt-oauth2-authorize)
+  (let*((callback-url "https://build-a-bot.biz/bab/register2.php")
+	(uri (string-append "https://twitter.com/i/oauth2/authorize?response_type=code&client_id=" *client-id* "&redirect_uri=" callback-url "&scope=tweet.write%20offline.access&state=abcdefgh&code_challenge=12345678&code_challenge_method=plain"   ))
+	(command (string-append "firefox " uri))
+      )
+   ;; (system command)
+(pretty-print uri)
+    ))
+
+;;https://twitter.com/i/oauth2/authorize?response_type=code&client_id=M1M5R3BMVy13QmpScXkzTUt5OE46MTpjaQ&redirect_uri=https://www.example.com&scope=tweet.read%20users.read%20follows.read%20follows.write&state=state&code_challenge=challenge&code_challenge_method=plain
+
+;;returns: https://build-a-bot.biz/bab/register2.php?state=abcdefgh&code=V20wZ0lJTERFLXVwTXYyMzloNXNmLXBjV2VMSG8tUUFZOEVDV2NEQzZVekJkOjE3MjEwNDA5NjU0MzY6MToxOmFjOjE
+
+
+;; curl --location --request POST 'https://upload.twitter.com/1.1/media/upload.json' \
+;; --header 'media_category: TWEET_IMAGE' \  
+;; --data-urlencode 'file: /home/mbc/Pictures/scope.jpeg' \
+;; -F media
+
+;;https://devcommunity.x.com/t/simple-image-upload-using-media-upload/162529/5
+ ;; $url = "https://upload.twitter.com/1.1/media/upload.json";
+ ;;    $path = "/path/to/file.png";
+ ;;    $body = "media=@".$path;
+ ;;    $response = exec("curl -H 'Authorization: OAuth  auth_consumer_key=\"$c_key\",oauth_nonce=\"$nonce\",oauth_signature=\"$sig\",oauth_signature_method=\"HMAC-SHA1\",oauth_timestamp=\"$ts\",oauth_token=\"$token\",oauth_version=\"1.0\"' -H 'Content-type: multipart/form-data' -F '$body' $url");
+(define (standard-port? uri)
+  (or (not (uri-port uri))
+      (and (eq? 'http (uri-scheme uri))
+           (= 80 (uri-port uri)))
+      (and (eq? 'https (uri-scheme uri))
+           (= 443 (uri-port uri)))))
+
+(define (port->string uri)
+  (if (standard-port? uri)
+      ""
+      (string-append ":" (number->string (uri-port uri)))))
+
+(define (signature-request-url uri)
+  (string-append (symbol->string (uri-scheme uri))
+                 "://"
+                 (uri-host uri)
+                 (port->string uri)
+                 (uri-path uri)))
+
+
+(define (test-curl-concat)
+  (let* ((oauth1-response (make-oauth1-response *oauth-access-token* *oauth-token-secret* '(("user_id" . "856105513800609792") ("screen_name" . "mbcladwell")))) ;;these credentials do not change	
+	 (credentials (make-oauth1-credentials *oauth-consumer-key* *oauth-consumer-secret*))
+ 	 (uri  "https://upload.twitter.com/1.1/media/upload.json")
+	 (image-request (make-oauth-request uri 'POST '()))
+	 (file-name "/home/mbc/Pictures/scope.jpeg")
+	 (size-in-bytes (number->string (stat:size (stat file-name))))
+	 (p (open-input-file file-name))
+ 	 (bytes (get-bytevector-all p))	 
+ 	 (bytes64 (base64-encode bytes))
+	 (nonce1 (oauth1-nonce))
+	 (timestamp (oauth1-timestamp))
+ 	 (dummy (close-port p))
+	 (_ (oauth-request-add-params image-request `( 
+							  (oauth_consumer_key . ,*oauth-consumer-key*)
+							  (oauth_nonce . ,nonce1)
+							  (oauth_signature_method . "HMAC-SHA1")
+							  (oauth_timestamp . ,timestamp)
+							  (oauth_token . ,*oauth-access-token*)
+							 ;;  (Content-Type . "multipart/form-data")
+							  (oauth_version . "1.0")
+							 ;; (media . "@/home/mbc/Pictures/scope.jpeg")
+							  )))
+;;	 pulling from guile-oauth
+	(s  (let ((method (oauth-request-method image-request))
+		  (uri (string->uri (oauth-request-url image-request)))
+		  (params (oauth-request-params image-request)))
+	      (string-join
+	       (map (lambda (p) (uri-encode p))
+		    (list (symbol->string method)
+			  (signature-request-url uri)
+			  (oauth1-normalized-params params)))
+	       "&")))
+
+;;	 (_ (pretty-print s))
+	;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+	 (_ (oauth1-request-sign image-request credentials oauth1-response #:signature oauth1-signature-hmac-sha1))
+	(_ (pretty-print  (oauth-request-params image-request) ))
+	 
+	 (sig (assoc-ref (oauth-request-params image-request) 'oauth_signature))
+	 
+;;	 (command (string-append "curl -H 'Authorization: OAuth  auth_consumer_key=" *oauth-consumer-key* ", auth_nonce=" (oauth1-nonce) ", oauth_signature=" sig ",oauth_signature_method=HMAC-SHA1, oauth_timestamp=" (oauth1-timestamp) ", oauth_token=" *oauth-access-token* ", oauth_version=\"1.0\"'  -H 'Content-type: multipart/form-data' -F 'media=@/home/mbc/Pictures/scope.jpeg' https://upload.twitter.com/1.1/media/upload.json")
+
+;;	 (command (string-append "curl -H 'Authorization: OAuth  auth_consumer_key=\"" *oauth-consumer-key* "\", auth_nonce=\"" (oauth1-nonce) "\", oauth_signature=\"" sig "\",oauth_signature_method=\"HMAC-SHA1\", oauth_timestamp=\"" (oauth1-timestamp) "\", oauth_token=\"" *oauth-access-token* "\", oauth_version=\"1.0\"'  -H 'Content-type: multipart/form-data' -F 'media=@/home/mbc/Pictures/scope.jpeg' https://upload.twitter.com/1.1/media/upload.json")
+
+;;https://devcommunity.x.com/t/simple-image-upload-using-media-upload/162529
+;; $url = "https://upload.twitter.com/1.1/media/upload.json";
+;; $data = "media_data=$image_b64";
+
+;; exec("curl -vX POST $url -H 'Authorization: OAuth oauth_consumer_key=\"$c_key\",oauth_nonce=\"$nonce\",oauth_signature=\"$sig\",oauth_signature_method=\"HMAC-SHA1\",oauth_timestamp=\"$ts\",oauth_token=\"$token\",oauth_version=\"1.0\"' -H 'Content-type: multipart/form-data' -d '$data'");
+
+	 
+;;	 (command (string-append "curl -vX POST https://upload.twitter.com/1.1/media/upload.json -H 'Authorization: OAuth  auth_consumer_key=\"" *oauth-consumer-key* "\", auth_nonce=\"" (oauth1-nonce) "\", oauth_signature=\"" sig "\",oauth_signature_method=\"HMAC-SHA1\", oauth_timestamp=\"" (oauth1-timestamp) "\", oauth_token=\"" *oauth-access-token* "\", oauth_version=\"1.0\"' -H 'Content-type: multipart/form-data'  -d 'media=@/home/mbc/Pictures/scope.jpeg'")
+
+;;twurl -X POST -H upload.twitter.com "/1.1/media/upload.json?media_category=TWEET_IMAGE&additional_owners=3805104374" -f adsapi-heirarchy.png -F media
+
+	 
+;;	   (command (string-append "curl -X POST -H 'Authorization: OAuth oauth_consumer_key=" *oauth-consumer-key* ", oauth_nonce=" nonce1 ", oauth_signature=" sig ", oauth_signature_method=HMAC-SHA1, oauth_timestamp=" timestamp ", oauth_token=" *oauth-access-token* ", oauth_version=1.0' -H 'Content-Type: multipart/form-data' -f '/home/mbc/Pictures/scope.jpeg' -F 'media' https://upload.twitter.com/1.1/media/upload.json?media_category=TWEET_IMAGE")
+
+	 (command (string-append "twurl -X POST -H upload.twitter.com /1.1/media/upload.json?media_category=TWEET_IMAGE -f " file-name " -F media"))
+		  
+		  )
+    (begin
+     ;; (receive (response body)
+(pretty-print 	  (system command))
+      ;;	(pretty-print (utf8->string body)))
+      (pretty-print command)
+      
+
+      )))
+
+
+;;create a signature https://developer.x.com/en/docs/authentication/oauth-1-0a/creating-a-signature
+
+;;POST https://upload.twitter.com/1.1/media/upload.json?media_category=tweet_image
+
+;;2024-07-25 working here to upload an image
+;;using oauth1 start with get-access-token line 140
+
+
+(define (oauth1-simple-image-upload )
+;;(define (oauth1-post-tweet  text reply-id media-id)
+  ;;https://developer.x.com/en/docs/twitter-api/v1/media/upload-media/api-reference/post-media-upload
+  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/authorizing-a-request
+  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/creating-a-signature
+  (let* (
+	 (oauth1-response (make-oauth1-response *oauth-access-token* *oauth-token-secret* '(("user_id" . "856105513800609792") ("screen_name" . "mbcladwell")))) ;;these credentials do not change	
+	 (credentials (make-oauth1-credentials *oauth-consumer-key* *oauth-consumer-secret*))
+ 	 (uri  "https://upload.twitter.com/1.1/media/upload.json")
+	 (image-request (make-oauth-request uri 'POST '()))
+	 ;;(_ (pretty-print *oauth-consumer-secret*))
+	 (data "media=@/home/mbc/Pictures/scope.jpeg")
+;;	 (data "/home/mbc/Pictures/scope.jpeg")
+	 (dummy (oauth-request-add-params image-request `( 
+							  (oauth_consumer_key . ,*oauth-consumer-key*)
+							  (oauth_nonce . ,(oauth1-nonce))
+							  (oauth_signature_method . "HMAC-SHA1")
+							  (oauth_timestamp . ,(oauth1-timestamp))
+							  (oauth_token . ,*oauth-access-token*)
+							  ;; (Content-Type . "application/x-www-form-urlencoded")
+							  (oauth_version . "1.0")
+							  ;;(status . ,text)
+							   ) ))
+	;; (dummy (if (string=? reply-id "") #f (oauth-request-add-param image-request 'in_reply_to_status_id reply-id) ))
+	;; (dummy (if (string=? media-id "") #f (oauth-request-add-param image-request 'media_ids media-id) ))
+	 (dummy (oauth1-request-sign image-request credentials oauth1-response #:signature oauth1-signature-hmac-sha1)))
+    
+    (oauth1-http-request image-request #:params-location 'header #:body data #:extra-headers '((Content-Type . "application/x-www-form-urlencoded")) #:http-proc http-request)))
+;;    (oauth1-http-request image-request #:params-location 'header #:body data )))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;guix shell guile -- guile -L /home/mbc/temp/tests ./test.scm
+;; guile -L /home/mbc/temp/tests ./test.scm
+
+
+;;      curl -o test2.txt https://mastodon.social/api/v1/statuses -H 'Authorization: Bearer dFe6j-65kVREIqyJs7RSmn23GeFBEU4_Qb2Nln_z_Lw' --data-binary 'status=Hello Worldiui'
+(define (test-bearer-syntax)
+  (let* ((uri "https://mastodon.social/api/v1/statuses")
+	 (access-token "dFe6j-65kVREIqyJs7RSmn23GeFBEU4_Qb2Nln_z_Lw")
+	 (bearer (string-append "bearer " access-token))
+	 (resp (receive (response body)
+      		       (http-request uri 
+				     #:method 'POST
+				     #:headers `((authorization . ,(parse-header 'authorization bearer)))
+				     #:body (string->utf8 "status=Hello Worldioblahblah")
+				     )
+		      response)
+		   )
+	 )
+    (utf8->string resp)))
+
+;;Step 5: POST oauth2/token - refresh token
+      
+;; POST 'https://api.twitter.com/2/oauth2/token' \
+;; --header 'Content-Type: application/x-www-form-urlencoded' \
+;; --data-urlencode 'refresh_token=bWRWa3gzdnk3WHRGU1o0bmRRcTJ5VUxWX1lZTDdJSUtmaWcxbTVxdEFXcW5tOjE2MjIxNDc3NDM5MTQ6MToxOnJ0OjE' \
+;; --data-urlencode 'grant_type=refresh_token' \
+;; --data-urlencode 'client_id=rG9n6402A3dbUJKzXTNX4oWHJ'
+
+
+
+
+(define (twurl-auth)
+  (let* ((command (string-append "twurl authorize --consumer-key " *oauth-consumer-key* " --consumer-secret " *oauth-consumer-secret*))
+	 )
+    (begin
+      (pretty-print command)
+     ;; (receive (response body)
+(pretty-print 	  (system command))
+      ;;	(pretty-print (utf8->string body)))      
+      )))
+
+
+(define (hmac-sha1-key client-secret token-secret)
+  (string-append (uri-encode client-secret)
+                 "&"
+                 (uri-encode token-secret)))
+
+(define (hmac-sha1-signature base-string client-secret token-secret)
+  (let ((key (hmac-sha1-key client-secret token-secret)))
+    (sign-data-base64 key base-string #:algorithm 'sha1)))
+
+
+
+(define (oauth2-post-tweet  text )
+  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/authorizing-a-request
+  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/creating-a-signature
+  (let* (
+ 	 (uri  "https://api.twitter.com/2/tweets")
+	;; (access-token "cWVacGlUSnJWRmt0UkZKTVAyNVRQZDRzOGh6dUtkUGswcWJ4U2FUQVRPaUh4OjE3MjE3MzI5NjAyNTA6MToxOmF0OjE")
+	 (bearer (string-append "Bearer " *oauth-access-token*))
+	 (data  "{\"text\":\"Hello World!\"}")
+ 	 (resp (receive (response body)
+      		   (http-request uri 
+				 #:method 'POST
+				 #:headers `((Content-Type . "application/json")					     
+					     (authorization . ,(parse-header 'authorization bearer))
+					   ;;  (image_id . "1828518395177746432")
+					     )
+				 #:body "{\"text\":\"Hello World!qwertyuiop\"}"
+				 )
+		 (utf8->string body))
+	       )
+	 )
+    resp))
+
+;;user context      
+;; curl --request POST \
+;;   --url 'https://api.x.com/1.1/statuses/update.json?status=Hello%20world' \
+;;   --header 'authorization: OAuth oauth_consumer_key="CONSUMER_API_KEY", oauth_nonce="OAUTH_NONCE", oauth_signature="OAUTH_SIGNATURE", oauth_signature_method="HMAC-SHA1", oauth_timestamp="OAUTH_TIMESTAMP", oauth_token="ACCESS_TOKEN", oauth_version="1.0"' \
+
+    
+
+
+(define (test-oauth1-simple-image-upload )
+;;(define (oauth1-post-tweet  text reply-id media-id)
+  ;;https://developer.x.com/en/docs/twitter-api/v1/media/upload-media/api-reference/post-media-upload
+  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/authorizing-a-request
+  ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/creating-a-signature
+  (let* (
+	 (oauth1-response (make-oauth1-response *oauth-access-token* *oauth-token-secret* '(("user_id" . "856105513800609792") ("screen_name" . "mbcladwell")))) ;;these credentials do not change	
+	 (credentials (make-oauth1-credentials  *oauth-consumer-key* *oauth-consumer-secret*))
+	 (uri  "https://upload.twitter.com/1.1/media/upload.json?media_category=TWEET_IMAGE")
+;;	 (uri  "https://upload.twitter.com/1.1/media/upload.json")
+	 (image-request (make-oauth-request uri 'POST '()))
+	 (file-name "/home/mbc/Pictures/scope.jpeg")
+	 (size-in-bytes (number->string (stat:size (stat file-name))))
+	 (p (open-input-file file-name))
+ 	 (bytes (get-bytevector-all p))	 
+ 	 (bytes64 (base64-encode bytes))
+ 	 (dummy (close-port p))
+	 (urlen-bytes64 (uri-encode bytes64))
+	 (data (string-append "media_data=" bytes64))
+	 (urlen-bytes64-hash (hmac-sha1-signature urlen-bytes64 *oauth-consumer-secret* *oauth-token-secret*))
+	 (_ (pretty-print (string-append "access-token: " *oauth-access-token*)))
+	 (dummy (oauth-request-add-params image-request `( 
+	  						   (oauth_consumer_key . ,*oauth-consumer-key*)
+							   (oauth_nonce . ,(oauth1-nonce))
+							   (oauth_timestamp . ,(oauth1-timestamp))
+							   (oauth_token . ,*oauth-access-token*)
+							   (oauth_version . "1.0")
+							   ) ))
+	 (dummy (oauth1-request-sign image-request credentials oauth1-response #:signature oauth1-signature-hmac-sha1))
+;;	 (_ (pretty-print "====step3========="))
+;;	 (_ (pretty-print image-request))
+	 )
+;;    #f
+    (oauth1-http-request image-request
+			 #:params-location 'header
+			 #:extra-headers '(
+			;;		   (content-type . (multipart/form-data))
+					   (content-type . (application/x-www-form-urlencoded))
+			;;		   (media_data . bytes64)
+					   )
+			 #:body data
+			 #:http-proc http-request
+			 )
+    ))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define (main)
+  (let* ((start-time (current-time time-monotonic))	 
+	 (stop-time (current-time time-monotonic))
+	 (_  (pretty-print (string-append "in twitt: " *oauth-consumer-key*)))
+	 (_ (get-access-token))
+	 
+	 (elapsed-time (ceiling (time-second (time-difference stop-time start-time))))
+	 )
+    (begin
+      (pretty-print (string-append "Shutting down after " (number->string elapsed-time) " seconds of use."))
+;;      (pretty-print (test-oauth1-simple-image-upload))
+;;     (test-twurl-concat)
+;;(oauth2-post-tweet "qqq")
+      )))
+
+(main)
+
+;; {"text": "Tweeting with media!", "media": {"media_ids": ["1455952740635586573"]}}
+;; (scm->json-string '(("text" . "eajsdkajksdebnces.")("media" . (("media_ids" . #("1832380895677857792"))))) )
+;; (scm->json-string '(("media_ids" . #("1832380895677857792"))))
+

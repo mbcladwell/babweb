@@ -10,9 +10,9 @@
   #:use-module (artanis irregex)
   #:use-module (srfi srfi-1)
   #:use-module (web uri)
-    #:use-module (babweb lib twitter)
+;;    #:use-module (babweb lib twitter)
   #:use-module (babweb lib account)
-  #:use-module (babweb lib env)
+;;  #:use-module (babweb lib env)
   #:use-module (ice-9 pretty-print)
  #:use-module (oauth oauth1)
  #:use-module (oauth oauth2)
@@ -24,7 +24,6 @@
  #:use-module (oauth oauth1 utils)
  #:use-module (oauth oauth1 credentials)
  #:use-module (oauth oauth1 signature)
- #:use-module (babweb lib twitter)
 
   )
   

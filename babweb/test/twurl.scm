@@ -33,6 +33,7 @@
 	     (ice-9 string-fun)  ;;string-replace-substring
 	     (ice-9 pretty-print)
 	     (ice-9 readline)
+	     (ice-9 iconv)
 	     (json)
 	     (gcrypt base64)
 	     (oauth oauth1)
@@ -48,7 +49,6 @@
 	     (oauth oauth1 request)
 	     (rnrs bytevectors)
 	     (ice-9 textual-ports)
-	     (babweb lib env)
 	     (babweb lib image)
 	     (babweb lib utilities)
 	     (babweb lib twitter)
@@ -57,7 +57,8 @@
 	    (gcrypt mac)
 	    (gcrypt base64)
 	    (ice-9 binary-ports)
-	     )
+	    (rnrs io ports ) ;;make-transocder
+	    )
 
 (define-record-type <response-token>
   (make-response-token token_type access_token)
@@ -111,11 +112,11 @@
         (throw 'gcry-error 'mac-open err))))
 
 
-(define %gcry-mac-open
-  (libgcrypt->procedure int "gcry_mac_open"
-                        ;; gcry_mac_hd_t *HD, int ALGO,
-                        ;; unsigned int FLAGS, gcry_ctx_t CTX
-                        `(* ,int ,unsigned-int *)))
+;; (define %gcry-mac-open
+;;   (libgcrypt->procedure int "gcry_mac_open"
+;;                         ;; gcry_mac_hd_t *HD, int ALGO,
+;;                         ;; unsigned int FLAGS, gcry_ctx_t CTX
+;;                         `(* ,int ,unsigned-int *)))
 
 ;; Client credentials:
 
@@ -152,10 +153,6 @@
 					 #:params '()
 					 #:signature oauth1-signature-hmac-sha1)))	
   a))
-
-
-
-
 
 
 (define (hmac-sha1-key client-secret token-secret)
@@ -200,45 +197,49 @@
 
 
 (define (test-oauth1-simple-image-upload )
-  ;;https://developer.x.com/en/docs/twitter-api/v1/media/upload-media/api-reference/post-media-upload
+;   ;https://developer.x.com/en/docs/twitter-api/v1/media/upload-media/api-reference/post-media-upload
   ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/authorizing-a-request
   ;;https://developer.twitter.com/en/docs/authentication/oauth-1-0a/creating-a-signature
+  ;;https://devcommunity.x.com/t/image-upload-gets-could-not-authenticate-you-error-free-tier/223066
   (let* (
 	 (oauth1-response (make-oauth1-response *oauth-access-token* *oauth-token-secret* '(("user_id" . "856105513800609792") ("screen_name" . "mbcladwell")))) ;;these credentials do not change	
 	 (credentials (make-oauth1-credentials *oauth-consumer-key* *oauth-consumer-secret*))
-	 (uri  "https://upload.twitter.com/1.1/media/upload.json?media_category=TWEET_IMAGE")
+;;	 (uri  "https://upload.twitter.com/1.1/media/upload.json?media_category=TWEET_IMAGE")
+	 (uri  "https://upload.twitter.com/1.1/media/upload.json")
 	 (image-request (make-oauth-request uri 'POST '()))
-	 (file-name "/home/mbc/Pictures/scope.jpeg")
-	 (size-in-bytes (number->string (stat:size (stat file-name))))
-	 (p (open-input-file file-name))
- 	 (bytes (get-bytevector-all p))	 
- 	 (bytes64 (base64-encode bytes))
- 	 (dummy (close-port p))
-	 (body-hash (hmac-sha1-signature bytes64 ))
+	 (image-path "/home/mbc/Pictures/scope.jpeg")
+	 (size-in-bytes (number->string (stat:size (stat image-path))))
+;;	 (p (open-input-file file-name))
+ ;;	 (bytes (get-bytevector-all p))	 
+ ;;	 (bytes64 (base64-encode bytes))
+ ;;	 (dummy (close-port p))
+;;	 (body-hash (hmac-sha1-signature bytes64 ))
+	 (boundary (string-append "------------------------" (number->string (time-second (current-time)))))
+         (image-data (call-with-input-file image-path get-bytevector-all))
+	 (image-filename (basename image-path))
+	 ;; (data (string-append
+         ;;        "--" boundary "\r\n"
+         ;;        "Content-Disposition: form-data; name=\"media\"; filename=\"" image-filename "\"\r\n"
+         ;;        "Content-Type: application/octet-stream\r\n\r\n"
+         ;;       (bytevector->string image-data (make-transcoder (utf-8-codec)))
+         ;;      ;;  (base64-encode image-data)
+         ;;        "\r\n--" boundary "--\r\n"))
 	;; (data "@/home/mbc/Pictures/scope.jpeg")
 	;; (data "/home/mbc/Pictures/scope.jpeg")
 	;; (data (string-append "{\"media\" : " bytes64 "}"))
-	 (data (string-append "media=" bytes64))
+	 ;;	 (data (string-append "media=" bytes64))
+	 (data  (base64-encode image-data))
+	;; (data   image-data)
 	 
 ;;	 (data "{\"media\":@/home/mbc/Pictures/scope.jpeg}")
 	 (dummy (oauth-request-add-params image-request `( 
 	  						   (oauth_consumer_key . ,*oauth-consumer-key*)
 							   (oauth_nonce . ,(oauth1-nonce))
+							  ;; (oauth_nonce . "kjksjfksjdkfjksjdkfj")
 							   (oauth_timestamp . ,(oauth1-timestamp))
 							   (oauth_token . ,*oauth-access-token*)
-							   (oauth_body_hash . ,body-hash)
-							  ;; (total_bytes . ,size-in-bytes)
-							  ;; (Content-Type . "application/x-www-form-urlencoded")
-							  ;; (Content-Type . "application/json")
-							  ;; (Content-Type . "multipart/form-data")
-							  ;; (Content-Type . "application/octet-stream")
 							   (oauth_version . "1.0")
-							 ;; (media_category . "TWEET_IMAGE")
-							 ;;  (media_type . "image/jpeg")
-							;;  (media . "/home/mbc/Pictures/scope.jpeg")
-							 ;; (media . ,data)
-							   ;;(status . ,text)
-							   ) ))
+							   )))
 	;; (dummy (if (string=? reply-id "") #f (oauth-request-add-param image-request 'in_reply_to_status_id reply-id) ))
 	;; (dummy (if (string=? media-id "") #f (oauth-request-add-param image-request 'media_ids media-id) ))
 	 (dummy (oauth1-request-sign image-request credentials oauth1-response #:signature oauth1-signature-hmac-sha1))
@@ -246,7 +247,16 @@
 	 (_ (pretty-print image-request))
 	 )
 ;;    #f
-    (oauth1-http-request image-request #:params-location 'header #:body data #:extra-headers `((Content-Type . "multipart/form-data")) #:http-proc http-request)
+    (oauth1-http-request image-request
+			 #:params-location 'header
+			 #:body data
+			 #:extra-headers `((Content-Type . "multipart/form-data")
+					   (Content-Length . ,size-in-bytes)
+					   (media_category . "TWEET_IMAGE")
+					   (name . "media")
+					   (filename . ,image-filename)
+					   )
+			 #:http-proc http-request)
     ))
 
 (define (test-curl-concat)
@@ -320,6 +330,12 @@
       (pretty-print command)
       )))
 
+(define (twurl-get-id pic-file-name)
+  (let* ((command (string-append "twurl -t -X POST -H upload.twitter.com /1.1/media/upload.json?media_category=TWEET_IMAGE -f " pic-file-name " -F media"))
+	 (js (call-command-with-output-to-string command))
+	 (lst  (json-string->scm js)))
+     (assoc-ref lst "media_id_string")))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;guix shell -m manifest.scm guile -- ./twurl.scm
@@ -330,17 +346,19 @@
 (define (main args)
   (let* ((start-time (current-time time-monotonic))	 
 	 (stop-time (current-time time-monotonic))
+	 (file-name "/home/mbc/Pictures/scope.jpeg")
 	 (_  (pretty-print (string-append "in twitt: " *oauth-consumer-key*)))
 ;;	 (_ (get-access-token))
 	 (elapsed-time (ceiling (time-second (time-difference stop-time start-time))))
 	 )
     (begin
       (pretty-print (string-append "Shutting down after " (number->string elapsed-time) " seconds of use."))
-
+;;      (pretty-print  (twurl-get-id "/home/mbc/Pictures/scope.jpeg"))
      ;; (twurl-auth)
-      (test-curl-concat)      
+;;      (test-curl-concat)      
        ;; (receive (response body)
-       ;; 	   (test-oauth1-simple-image-upload)
+;;       (pretty-print  (test-oauth1-simple-image-upload))
+       (pretty-print (oauth1-upload-media-init  file-name))
        ;; 	(pretty-print (utf8->string body)))      
 ;;	    (envs-report "envs")      
 	;;    (envs-report "oauth1_access_token_envs")      

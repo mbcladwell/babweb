@@ -17,10 +17,9 @@
   #:use-module (ice-9 pretty-print)
   #:use-module (ice-9 receive)
   #:use-module (ice-9 textual-ports)
-  #:use-module (babweb lib twitter)
+;;  #:use-module (babweb lib twitter)
   #:use-module (babweb lib account)
-  #:use-module (babweb lib env)
-  #:use-module (babweb lib utilities)
+;;  #:use-module (babweb lib utilities)
    #:use-module (oauth oauth1)
  #:use-module (oauth oauth2)
  #:use-module (oauth oauth2 request)
@@ -44,7 +43,7 @@
     (let* (
 ;;	   (custid (uri-decode (:from-post rc 'get-vals "custid")))
 ;;	   (code (uri-decode (:from-post rc 'get-vals "code")))
-	   (custid (params rc "state"))
+	  ;; (custid (params rc "state"))
 	   ;;code is from
 	   (_ (pretty-print (string-append "datadir: " *data-dir*)))
 	   (authorization-code (params rc  "code"))
@@ -58,7 +57,7 @@
 	   (_ (pretty-print "response next:"))
 	 ;;  (_ (pretty-print response))
 	   ;;test tweet
-	   (_ (oauth2-post-tweet "test tweet inside art/oauth2-step2" *data-dir*))
+	  ;; (_ (oauth2-post-tweet "test tweet inside art/oauth2-step2" *data-dir*))
 	   )
       ;; (view-render "oauth2step2" (the-environment)))
       

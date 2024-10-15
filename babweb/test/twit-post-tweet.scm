@@ -104,8 +104,8 @@
       (pretty-print (string-append "Shutting down after " (number->string elapsed-time) " seconds of use."))
 ;;    (mast-post-toot-curl-recurse tweets #f media-id 0 hashtags)
       ;;provide clickable url to get pin and authorization code; redirects to oauth2step2, writes access code
-      ;;      (twitt-oauth2-authorize)
-      (oauth2-post-tweet-recurse tweets media-id #f *data-dir* hashtags 0)
+            (twitt-oauth2-authorize)
+    ;;  (oauth2-post-tweet-recurse tweets media-id #f *data-dir* hashtags 0)
 ;;      (pretty-print (oauth2-post-tweet "test tweet" "1834901647132065792" #f *data-dir*))
 ;;     (pretty-print (oauth2-post-tweet "qqq" "/home/mbc/projects/babdata/ellul"))
       )))

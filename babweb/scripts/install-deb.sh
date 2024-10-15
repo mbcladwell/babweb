@@ -142,6 +142,46 @@ _msg "Setting up babweb...."
     
 }
 
+mcron()
+{
+
+    sudo apt-get install mcron
+    mkdir -p ~/.config/cron
+    touch ~/.config/cron/job.guile
+    echo "(use-modules (guix) (gnu) (gnu services mcron)(srfi srfi-19)" >> ~/.config/cron/job.guile
+echo "(use-package-modules base idutils)" >> ~/.config/cron/job.guile
+echo " " >> ~/.config/cron/job.guile
+echo "(job '(next-minute)" >> ~/.config/cron/job.guile
+echo "   (lambda ()" >> ~/.config/cron/job.guile
+echo " " >> ~/.config/cron/job.guile
+echo " " >> ~/.config/cron/job.guile
+echo " " >> ~/.config/cron/job.guile
+
+
+touch ~/mcron.service
+echo "[Unit]
+Description=Regular background program processing daemon
+Documentation=man:mcron(8)
+After=remote-fs.target nss-user-lookup.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/mcron /home/admin/.config/cron/job.guile
+KillMode=process
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target" >> ~/mcron.service
+    
+sudo cp ./mcron.service /usr/lib/systemd/system
+rm ~/mcron.service
+
+  touch ~/.config/cron/mcron-out.txt
+  
+
+}
+
 artanis()
 {
 _msg "Setting up artanis...."
