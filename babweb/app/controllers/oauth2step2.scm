@@ -36,26 +36,27 @@
 (define-artanis-controller oauth2step2) ; DO NOT REMOVE THIS LINE!!!
 
 ;;must be in developers portal setup as valid callback
+;;2024-10-17
+;;this may now be step 1 as intermediary gotten rid of
 (get "/oauth2step2"
       #:cookies '(names reqtok sid)
      ;; #:from-post 'qstr
   (lambda (rc)
     (let* (
-;;	   (custid (uri-decode (:from-post rc 'get-vals "custid")))
+;;	   (oauth-token (uri-decode (:from-post rc 'get-vals "oauth_token")))
+;;	   (oauth-verifier (uri-decode (:from-post rc 'get-vals "oauth_token")))
 ;;	   (code (uri-decode (:from-post rc 'get-vals "code")))
 	  ;; (custid (params rc "state"))
 	   ;;code is from
-	   (_ (pretty-print (string-append "datadir: " *data-dir*)))
-	   (authorization-code (params rc  "code"))
+	  ;; (_ (pretty-print (string-append "datadir: " *data-dir*)))
+	   (oauth-token (params rc  "oauth_token"))
+	   (oauth-verifier (params rc  "oauth_verifier"))
 	  ;; (_ (:cookies-set! rc 'reqtok "reqtok" request-token))
-	  ;; (uri (string-append "https://api.twitter.com/oauth/authenticate?oauth_token=" request-token))
-	   (_ (init-get-access-token authorization-code *client-id* *redirecturi* *data-dir*))
-	   ;;init-get-access-token will write oauth1_access_token_envs
 	   ;;(access-token (assoc-ref response "access_token"))
 	   ;;(expires-in (assoc-ref response "expires_in"))
 	   ;;(refresh-token (assoc-ref response "refresh_token"))
 	   (_ (pretty-print "response next:"))
-	 ;;  (_ (pretty-print response))
+	   (_ (pretty-print oauth-token))
 	   ;;test tweet
 	  ;; (_ (oauth2-post-tweet "test tweet inside art/oauth2-step2" *data-dir*))
 	   )

@@ -1,6 +1,4 @@
 (define-module (babweb lib account) 
- #:use-module (babweb lib env)
- #:use-module (babweb lib utilities)
 #:use-module (web client)
   #:use-module (srfi srfi-19) ;; date time
   #:use-module (srfi srfi-1)  ;;list searching; delete-duplicates in list 
