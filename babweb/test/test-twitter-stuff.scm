@@ -18,7 +18,6 @@
 	     (web request)
 	     (oop goops) ;; class-of
 	     (web uri)
-	     (web client)
 	     (web http)
 	     (ice-9 rdelim)
 	     (ice-9 i18n)   ;; internationalization
@@ -574,8 +573,8 @@
 (define (main)
   (let* ((start-time (current-time time-monotonic))	 
 	 (stop-time (current-time time-monotonic))
-	 (_  (pretty-print (string-append "in twitt: " *oauth-consumer-key*)))
-	 (_ (get-access-token))
+;;	 (_  (pretty-print (string-append "in twitt: " *oauth-consumer-key*)))
+	 (_ (test-bearer-syntax))
 	 
 	 (elapsed-time (ceiling (time-second (time-difference stop-time start-time))))
 	 )
